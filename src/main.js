@@ -122,27 +122,17 @@ async function exportVideo(){
     await ffmpeg.exec([
         "-stream_loop", "-1",      //Faz o video repetir infinitamente
         "-i", "video.mp4",         //Identifica os arquivos
-        "-i", "overlay.mp4",       //Identifica os arquivos
+       // "-stream_loop", "-1",      //Faz o video repetir infinitamente
         "-i", "overlay.mp4",       //Identifica os arquivos
         "-i", "audio.mp3",         //Identifica os arquivos
         "-filter_complex",         //Sobrepoe o video principal + overlay
-        `[1:v]
-        chromakey=0x00FF00:0.25:0.08,
-        scale=iw*${scale}:ih*${scale}[ov1];
-
-        [2:v]
-        chromakey=0x00FF00:0.25:0.08,
-        scale=iw*${scale}:ih*${scale}[ov2];
-
-        [0:v][ov1]
-        overlay=(W-w)/2:(H-h)/2:
-        enable='between(t,0,8)'
-        [tmp];
-
-        [tmp][ov2]
-        overlay=(W-w)/2:(H-h)/2:
-        enable='between(t,${last20seconds},${audioDuration})'
-        [v]`,
+        `[1:v] 
+           chromakey=0x00FF00:0.25:0.08,
+           scale=iw*${scale}:ih*${scale}[ov];
+         [0:v][ov]
+           overlay=(W-w)/2:(H-h)/2: 
+           enable='between(t,0,8)+between(t,${last20seconds},${audioDuration})'
+         [v]`,
              //1 = overlay | 0 = video principal
              //Primeiro está retirando o chroma key, redimencionando o overlay, depois posiciona no centro
              //chromakey=COR:SIMILARIDADE:SUAVIZAÇÃO 
