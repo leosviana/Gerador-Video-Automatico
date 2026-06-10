@@ -129,7 +129,7 @@ async function exportVideo(){
            chromakey=0x00FF00:0.25:0.08,
            scale=iw*${scale}:ih*${scale}[ov];
          [0:v][ov]
-           overlay=(W-w)/2:(H-h)/2:
+           overlay=(W-w)/2:(H-h)/2: 
            enable='between(t,0,8)+between(t,${last20seconds},${audioDuration})'[v]`,
              //1 = overlay | 0 = video principal
              //Primeiro está retirando o chroma key, redimencionando o overlay, depois posiciona no centro
