@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>gerador-video-automatico</title>
+  </head>
+  <body>
+    <div class="container">
+        <h3>Gerador De Vídeo Automático - V5.1</h3>  
+        <div class="upload-area">            
+            <label>Arquivo MP3:</label><br>
+            <input type="file" id="audioInput" accept=".mp3"><br>
+            <label>Arquivo MP4:</label><br>
+            <input type="file" id="videoInput" accept=".mp4"><br>
+            <label>Repetição:</label>
+            <select id="loopMode">
+                <option value="loop">Loop</option>
+                <option value="reverse">Reverso</option>
+            </select>
+            <label>Tamanho Overlay: </label>
+            <input type="range" id="overlayScale" min="0.5" max="5" step="0.1" value="2">
+            <!-- range: Cria um controle deslizante (slider) para arrastar a bolinha para esquerda ou direita -->
+            <!-- min = 0.5 é o menor valor permitido, nesse caso 0.5 = 50% do tamanho original / 1.0 = tamanho original / 2.0 = dobro do tamanho -->
+            <!-- max = 4 é o maior valor permitido (4 vezes o tamanho original) -->
+            <!-- step = 0.1 define de quanto em quanto o valor pode variar (0.1 significa: 0.5, 0.6, 0.7...) -->
+            <!-- value = 2 é o valor inicial quando abre a página -->
+        </div>
+        <div class="preview-container">
+            <canvas id="previewCanvas"></canvas>
+            <video id="overlayVideo" muted autoplay loop playsinline></video>
+        </div>
+        <div>
+            <button id="btExportar">Exportar Vídeo</button>
+        </div>        
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
