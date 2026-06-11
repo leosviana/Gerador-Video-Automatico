@@ -115,23 +115,39 @@ async function exportVideo(){
   console.log("Overlay enviado para o FFmpeg.");
   const scale = parseFloat(
     overlayInput.value
-);
+  );
+
+  //LOOP REVERSO DO VIDEO PRINCIPAL
+  const selectedLoop = loopMode.value;
+  let sourceVideo = "video.mp4";
+  if(selectedLoop === "reverse"){
+    console.log("Criando video reverso...");
+    await ffmpeg.exec([
+      "-i", "video.mp4",
+      "-filter_complex",
+      "[0:v]reverse[rev];[0:v][rev]concat=n=2:v=1:a=0[v]",
+      "-map", "[v]",
+      "-an",
+      "pingpong.mp4"
+    ]);
+    sourceVideo = "pingpong.mp4";
+    console.log("Video reverso criado");
+  }
 
   //FFMPEG - COMANDOS PARA PROCESSAR OS ARQUIVOS:
   try{
     await ffmpeg.exec([
         "-stream_loop", "-1",      //Faz o video repetir infinitamente
-        "-i", "video.mp4",         //Identifica os arquivos
-       // "-stream_loop", "-1",      //Faz o video repetir infinitamente
-        "-i", "overlay.mp4",       //Identifica os arquivos
-        "-i", "audio.mp3",         //Identifica os arquivos
+        "-i", sourceVideo,         //Identifica o arquivo de video principal
+        "-i", "overlay.mp4",       //Identifica o arquivo de video overlay
+        "-i", "audio.mp3",         //Identifica o arquivo de audio
         "-filter_complex",         //Sobrepoe o video principal + overlay
         `[1:v] 
            chromakey=0x00FF00:0.25:0.08,
            scale=iw*${scale}:ih*${scale}[ov];
          [0:v][ov]
            overlay=(W-w)/2:(H-h)/2: 
-           enable='between(t,0,8)+between(t,${last20seconds},${audioDuration})'
+           enable='between(t,0,8)'
          [v]`,
              //1 = overlay | 0 = video principal
              //Primeiro está retirando o chroma key, redimencionando o overlay, depois posiciona no centro
@@ -155,7 +171,7 @@ async function exportVideo(){
     console.log("ERRO FFMPEG: ", error);
   }
 
-  console.log("Tentandoler ler saida .MP4");
+  console.log("Tentando ler saida .MP4");
   const files = await ffmpeg.listDir("/");
   console.log(files);
 
