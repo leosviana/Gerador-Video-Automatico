@@ -59,6 +59,8 @@ overlayVideo.loop = true; //Repetir continuamente
 overlayVideo.muted = true; //Sem audio
 overlayVideo.volume = 0;
 overlayVideo.playsInline = true; //Necessario para autoplay em alguns navegadores
+const chromaCanvas = document.createElement("canvas");
+const chromaCtx = chromaCanvas.getContext("2d",{willReadFrequently: true});
 overlayVideo.addEventListener("loadeddata", () => {
   overlayVideo.play();
 });
@@ -77,23 +79,31 @@ overlayInput.addEventListener("input", () => {
 let dragging = false;
 canvas.addEventListener("mousedown", (e) =>{
   const rect = canvas.getBoundingClientRect();
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
+  dragOffsetX = mouseX - overlayX;
+  dragOffsetY = mouseY - overlayY;
   if(
     mouseX >= overlayX &&
-    mouseY <= overlayX + overlayWidth &&
+    mouseX <= overlayX + overlayWidth &&
     mouseY >= overlayY &&
     mouseY <= overlayY + overlayHeight
-  ){
-    dragging = true;
-  };
+){
+  dragging = true;
+}
 });
 
 canvas.addEventListener("mousemove", (e) => {
   if(!dragging) return;
   const rect = canvas.getBoundingClientRect();
-  overlayX = e.clientX - rect.left;
-  overlayY = e.clientY - rect.top;
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  overlayX = ((e.clientX - rect.left) * scaleX) - dragOffsetX;
+  overlayY = ((e.clientY - rect.top) * scaleY) - dragOffsetY;
+  //overlayX = (e.clientX - rect.left) * scaleX;
+  //overlayY = (e.clientY - rect.top) * scaleY;
 });
 
 canvas.addEventListener("mouseup", () => {
@@ -319,10 +329,28 @@ function drawPreview(){
   }
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  chromaCanvas.width = overlayVideo.videoWidth;
+  chromaCanvas.height = overlayVideo.videoHeight;
   if(overlayVideo.readyState >= 2){
     overlayWidth = overlayVideo.videoWidth * overlayScale;
     overlayHeight = overlayVideo.videoHeight * overlayScale;
-    ctx.drawImage(overlayVideo, overlayX, overlayY, overlayWidth, overlayHeight);
+    chromaCtx.drawImage(overlayVideo, 0, 0);
+    const frame = chromaCtx.getImageData(0, 0, chromaCanvas.width, chromaCanvas.height);
+    const pixels = frame.data;
+    for(let i = 0; i < pixels.length; i += 4){
+      const r = pixels[i];
+      const g = pixels[i + 1];
+      const b = pixels[i + 2];
+      if(g > 140 &&
+         g > r * 1.3 &&
+         g > b * 1.3
+      ){
+        pixels[i + 3] = 0;
+      }
+    }
+    chromaCtx.putImageData(frame,0,0);
+    ctx.drawImage(chromaCanvas, overlayX, overlayY, overlayWidth, overlayHeight);
+
   }
 }
 
