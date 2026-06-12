@@ -41,6 +41,14 @@ videoInput.addEventListener("change", (event) => {
     console.log("Video carregado:", videoFile);
 });
 
+videoInput.addEventListener("change", () => {
+  video.src = URL.createObjectURL(videoFile);
+  video.play();
+});
+
+let reverseDirection = 1;
+
+
 // =======================================
 // OVERLAY (SE INSCREVA)
 // =======================================
@@ -81,7 +89,20 @@ canvas.addEventListener("mousedown", (e) =>{
   };
 });
 
+canvas.addEventListener("mousemove", (e) => {
+  if(!dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  overlayX = e.clientX - rect.left;
+  overlayY = e.clientY - rect.top;
+});
 
+canvas.addEventListener("mouseup", () => {
+  dragging = false;
+});
+
+canvas.addEventListener("mouseleave", () =>{
+  dragging = false;
+});
 
 // =======================================
 // CARREGA FFMPEG APENAS UMA VEZ
@@ -182,9 +203,11 @@ async function exportVideo(){
     chromakey=0x00FF00:0.25:0.08,
     scale=iw*${scale}:ih*${scale}[ov];
     [0:v][ov]
-    overlay=(W-w)/2:(H-h)/2:
+    overlay=${Math.floor(overlayX)}:${Math.floor(overlayY)}:
     enable='between(t,0,8)'
-    [v]
+    [v];
+    [2:a][1:a]
+    amix=inputs=2:duration=first[aout]
   `;
 
   //FFMPEG - COMANDOS PARA PROCESSAR OS ARQUIVOS:
@@ -204,9 +227,7 @@ async function exportVideo(){
                                    //scale=iw*2:ih*2 -->   
                                    //W = largura video principal / w = largura overlay / H = altura video principal / h = altura overlay
         "-map", "[v]",             //Usa video filtrado
-        -filter_complex `[2:a][1:a]amix=inputs=2:duration=first[aout];`,
-        "-map", [aout], 
-        "-map", "2:a",             //Usa audio do MP3
+        "-map", "[aout]",          //Unir audio do MP3 com o audio do video do overlay        
         "-c:v", "libx264",         //Mantem o arquivo original - libx264: Permite editar o video
         "-preset", "superfast",     //Compressão do arquivo: ultrafast, superfast, veryfast, faster, fast, medium (padrão)...
         "-crf", "20",              //Qualidade do video
@@ -279,7 +300,34 @@ async function exportVideo(){
   console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
 }
 
+function drawPreview(){
+  requestAnimationFrame(drawPreview);
+  if(video.readyState < 2) return;
+  if(loopMode.value === "reverse"){
+    video.pause();
+    video.currentTime += (1 / 30) * reverseDirection;
+    if(video.currentTime >= video.duration){
+      reverseDirection = -1;
+    }
+    if(video.currentTime <= 0){
+      reverseDirection = 1;
+    }
+  }else{
+    if(video.paused){
+      video.play();
+    }
+  }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  if(overlayVideo.readyState >= 2){
+    overlayWidth = overlayVideo.videoWidth * overlayScale;
+    overlayHeight = overlayVideo.videoHeight * overlayScale;
+    ctx.drawImage(overlayVideo, overlayX, overlayY, overlayWidth, overlayHeight);
+  }
+}
+
 async function init(){
   console.log("Projeto carregado com sucesso");
+  drawPreview();
 }
 init();
