@@ -13,6 +13,9 @@ const ctx = canvas.getContext("2d"); // Contexto 2D do canvas para desenhar imag
 canvas.width = 1280; //Define resolucao de largura do canvas
 canvas.height = 720; //Define resolucao de altura do canvas
 const loopMode = document.getElementById("loopMode"); //Seleciona o modo de repeticao
+let dragging = false; //Controle de arrastar o mouse
+let dragOffsetX = 0; //Posição X (vertical)
+let dragOffsetY = 0; //Posição Y (horizontal)
 //CHROMAKEY - CANVA DE VIDEO OVERLAY(INSCREVA-SE):
 const overlayInput = document.getElementById("overlayScale"); //Escala inicial do overlay
 //BOTAO EXPORTAR
@@ -60,50 +63,53 @@ overlayVideo.muted = true; //Sem audio
 overlayVideo.volume = 0;
 overlayVideo.playsInline = true; //Necessario para autoplay em alguns navegadores
 const chromaCanvas = document.createElement("canvas");
-const chromaCtx = chromaCanvas.getContext("2d",{willReadFrequently: true});
+const chromaCtx = chromaCanvas.getContext("2d",{willReadFrequently: true}); //Cria um contexto otimizado para operações frequentes
 overlayVideo.addEventListener("loadeddata", () => {
   overlayVideo.play();
 });
 
 //Posição do overlay
-let overlayScale = 0.5;
-let overlayX = 400;
-let overlayY = 150;
-let overlayWidth = 0;
-let overlayHeight = 0;
+let overlayScale = 0.5; //Escala overlay (slider)
+let overlayX = 400; //Posição horizontal em pixel do canvas
+let overlayY = 150; //Posição vertical em pixel do canvas
+let overlayPercentX = 0; //Posição relativa (0 e 1). Será usada na exportação para manter a mesma posição
+let overlayPercentY = 0; //Posição relativa (0 e 1). Será usada na exportação para manter a mesma posição
+let overlayWidth = 0; //Tamanho atual do overlay
+let overlayHeight = 0; //Tamanho atual do overlay
 overlayInput.addEventListener("input", () => {
   overlayScale = parseFloat(overlayInput.value);
 });
 
 //Arrastar overlay com o mouse
-let dragging = false;
 canvas.addEventListener("mousedown", (e) =>{
   const rect = canvas.getBoundingClientRect();
-  let dragOffsetX = 0;
-  let dragOffsetY = 0;
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
-  dragOffsetX = mouseX - overlayX;
-  dragOffsetY = mouseY - overlayY;
-  if(
+
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mouseX = (e.clientX - rect.left) * scaleX;
+  const mouseY = (e.clientY - rect.top) * scaleY;
+  if( //Verifica se clicou dentro do overlay
     mouseX >= overlayX &&
     mouseX <= overlayX + overlayWidth &&
     mouseY >= overlayY &&
     mouseY <= overlayY + overlayHeight
 ){
   dragging = true;
+  dragOffsetX = mouseX - overlayX;
+  dragOffsetY = mouseY - overlayY;
+  console.log("Drag iniciado");
 }
 });
-
+//Movendo o mouse
 canvas.addEventListener("mousemove", (e) => {
-  if(!dragging) return;
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  overlayX = ((e.clientX - rect.left) * scaleX) - dragOffsetX;
-  overlayY = ((e.clientY - rect.top) * scaleY) - dragOffsetY;
-  //overlayX = (e.clientX - rect.left) * scaleX;
-  //overlayY = (e.clientY - rect.top) * scaleY;
+  if(!dragging) return; //Se não estiver arrastando, sai da função
+  const rect = canvas.getBoundingClientRect(); //Obtem o tamanho visivel do canvas na tela
+  const scaleX = canvas.width / rect.width; //Calcula fator de escala horizontal entre tela e canvas real
+  const scaleY = canvas.height / rect.height; //Calcula fator de escala vertical entre tela e canvas real
+  overlayX = ((e.clientX - rect.left) * scaleX) - dragOffsetX; //Atualiza a posição X do overlay
+  overlayY = ((e.clientY - rect.top) * scaleY) - dragOffsetY; //Atualiza a posição Y do overlay
+  overlayPercentX = overlayX / canvas.width; //Converte posição horizontal para porcentagem
+  overlayPercentY = overlayY / canvas.height; //Converte posição vertical para porcentagem
 });
 
 canvas.addEventListener("mouseup", () => {
@@ -186,6 +192,14 @@ async function exportVideo(){
   console.log("Overlay enviado para o FFmpeg.");
   console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
   const scale = parseFloat(overlayInput.value);
+  const videoWidth = video.videoWidth;
+  const videoHeight = video.videoHeight;
+  const exportX = Math.floor(overlayPercentX * videoWidth);
+  const exportY = Math.floor(overlayPercentY * videoHeight);
+  console.log("Video Width:", videoWidth);
+  console.log("Video Height:", videoHeight);
+  console.log("Export X: ", exportX); //Exibe coordenadas finais X
+  console.log("Export Y: ", exportY); //Exibe coordenadas finais Y
 
   //LOOP REVERSO DO VIDEO PRINCIPAL
   const selectedLoop = loopMode.value;
@@ -213,7 +227,7 @@ async function exportVideo(){
     chromakey=0x00FF00:0.25:0.08,
     scale=iw*${scale}:ih*${scale}[ov];
     [0:v][ov]
-    overlay=${Math.floor(overlayX)}:${Math.floor(overlayY)}:
+    overlay=${exportX}:${exportY}:
     enable='between(t,0,8)'
     [v];
     [2:a][1:a]
@@ -329,13 +343,23 @@ function drawPreview(){
   }
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  chromaCanvas.width = overlayVideo.videoWidth;
-  chromaCanvas.height = overlayVideo.videoHeight;
+
+  //Chroma key no canvas
   if(overlayVideo.readyState >= 2){
-    overlayWidth = overlayVideo.videoWidth * overlayScale;
-    overlayHeight = overlayVideo.videoHeight * overlayScale;
-    chromaCtx.drawImage(overlayVideo, 0, 0);
-    const frame = chromaCtx.getImageData(0, 0, chromaCanvas.width, chromaCanvas.height);
+    overlayWidth = overlayVideo.videoWidth * overlayScale; //Calcula o overlay em largura de acordo com o slider
+    overlayHeight = overlayVideo.videoHeight * overlayScale; //Calcula o overlay em altura de acordo com o slider
+    overlayPercentX = overlayX / canvas.width; //Posição relativa horizontal sempre atualizada
+    overlayPercentY = overlayY / canvas.height; //Posição relativa vertical sempre atualizada
+    if( //Faz o canva interno ser exatamente o mesmo tamanho do overlay
+    chromaCanvas.width !== overlayVideo.videoWidth ||
+    chromaCanvas.height !== overlayVideo.videoHeight
+    ){
+      chromaCanvas.width = overlayVideo.videoWidth;
+      chromaCanvas.height = overlayVideo.videoHeight;
+    }   
+    chromaCtx.drawImage(overlayVideo, 0, 0); //Desenha o frame atual do vídeo overlay dentro do canva temporario
+    //Capturando todos os pixels e aplicando o chromakey:
+    const frame = chromaCtx.getImageData(0, 0, chromaCanvas.width, chromaCanvas.height); 
     const pixels = frame.data;
     for(let i = 0; i < pixels.length; i += 4){
       const r = pixels[i];
@@ -350,7 +374,6 @@ function drawPreview(){
     }
     chromaCtx.putImageData(frame,0,0);
     ctx.drawImage(chromaCanvas, overlayX, overlayY, overlayWidth, overlayHeight);
-
   }
 }
 
