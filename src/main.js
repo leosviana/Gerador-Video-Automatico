@@ -45,14 +45,43 @@ videoInput.addEventListener("change", (event) => {
 // OVERLAY (SE INSCREVA)
 // =======================================
 const overlayPath = overlayFile; //Caminho do overlay
-//const overlayVideo = document.createElement("video"); //Cria um video invisivel para o overlay
-//video.preload = "auto";
-//overlayVideo.preload = "auto";
-//overlayVideo.muted = false; //Sem audio
-//overlayVideo.loop = false; //Repetir continuamente
-//overlayVideo.playsInline = true; //Necessario para autoplay em alguns navegadores
-//let firstOverlayPlayed = false; //Controle para saber se o primeiro overlay foi executado
-//let lastOverlayPlayed = false; //Controle para saber se o segundo overlay foi executado
+const overlayVideo = document.getElementById("overlayVideo");
+overlayVideo.src = overlayPath;
+overlayVideo.loop = true; //Repetir continuamente
+overlayVideo.muted = true; //Sem audio
+overlayVideo.volume = 0;
+overlayVideo.playsInline = true; //Necessario para autoplay em alguns navegadores
+overlayVideo.addEventListener("loadeddata", () => {
+  overlayVideo.play();
+});
+
+//Posição do overlay
+let overlayScale = 0.5;
+let overlayX = 400;
+let overlayY = 150;
+let overlayWidth = 0;
+let overlayHeight = 0;
+overlayInput.addEventListener("input", () => {
+  overlayScale = parseFloat(overlayInput.value);
+});
+
+//Arrastar overlay com o mouse
+let dragging = false;
+canvas.addEventListener("mousedown", (e) =>{
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+  if(
+    mouseX >= overlayX &&
+    mouseY <= overlayX + overlayWidth &&
+    mouseY >= overlayY &&
+    mouseY <= overlayY + overlayHeight
+  ){
+    dragging = true;
+  };
+});
+
+
 
 // =======================================
 // CARREGA FFMPEG APENAS UMA VEZ
@@ -65,6 +94,16 @@ async function loadFFmpeg(){
   await ffmpeg.load(); //Faz download dos arquivos internos: https://app.unpkg.com/@ffmpeg/core@0.11.0/files/dist
   ffmpegLoaded = true;
   console.log("FFmpeg carregado com sucesso.");
+}
+
+//CÁLCULO DE TEMPO DOS PROCESSOS
+const startTime = Date.now(); //Tempo atual
+function formatElapsedTime(startTime){
+  const elapsedMs = Date.now() - startTime;
+  const totalSeconds = Math.floor(elapsedMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s`;
 }
 
 // =======================================
@@ -80,7 +119,6 @@ async function exportVideo(){
     alert("Selecione o arquivo MP4!");
     return;
   }
-  console.log("Iniciando exportação...");
 
   await loadFFmpeg(); //Garante que o FFmpeg seja carregado
 
@@ -99,12 +137,14 @@ async function exportVideo(){
     new Uint8Array(await audioFile.arrayBuffer())
   );
   console.log("MP3 enviado para o FFmpeg.");
+  console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
   //ARQUIVO MP4 - Envia o MP4 para a memória do FFmpeg
   await ffmpeg.writeFile(
     "video.mp4",
     new Uint8Array(await videoFile.arrayBuffer())
   );
   console.log("MP4 enviado para o FFmpeg.");
+  console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
   //ARQUIVO OVERLAY - Envia o arquivo inscreva-se para a memória do FFmpeg
   const overlayResponse = await fetch(overlayPath); //Carrega arquivo overlay da pasta raiz
   console.log("Status overlay: ", overlayResponse.status);
@@ -113,26 +153,39 @@ async function exportVideo(){
   const overlayUint8 = new Uint8Array(overlayBuffer); //Converte o arquivo para ArrayBuffer
   await ffmpeg.writeFile("overlay.mp4", overlayUint8); //Envia overlay para memória do FFmpeg
   console.log("Overlay enviado para o FFmpeg.");
-  const scale = parseFloat(
-    overlayInput.value
-  );
+  console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
+  const scale = parseFloat(overlayInput.value);
 
   //LOOP REVERSO DO VIDEO PRINCIPAL
   const selectedLoop = loopMode.value;
   let sourceVideo = "video.mp4";
   if(selectedLoop === "reverse"){
-    console.log("Criando video reverso...");
-    await ffmpeg.exec([
+    console.log("Criando vídeo PingPong...");
+    await ffmpeg.exec([ //Exportação do vídeo temporário para fazer reverso
       "-i", "video.mp4",
       "-filter_complex",
       "[0:v]reverse[rev];[0:v][rev]concat=n=2:v=1:a=0[v]",
       "-map", "[v]",
-      "-an",
+      "-an",      
+      "-c:v", "libx264",
+      "-preset", "ultrafast",
+      "-crf", "18",
       "pingpong.mp4"
     ]);
     sourceVideo = "pingpong.mp4";
-    console.log("Video reverso criado");
+    console.log("Vídeo PingPong criado.");
+    console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
   }
+  // Filtro principal
+  const filterComplex = `
+    [1:v]
+    chromakey=0x00FF00:0.25:0.08,
+    scale=iw*${scale}:ih*${scale}[ov];
+    [0:v][ov]
+    overlay=(W-w)/2:(H-h)/2:
+    enable='between(t,0,8)'
+    [v]
+  `;
 
   //FFMPEG - COMANDOS PARA PROCESSAR OS ARQUIVOS:
   try{
@@ -141,32 +194,69 @@ async function exportVideo(){
         "-i", sourceVideo,         //Identifica o arquivo de video principal
         "-i", "overlay.mp4",       //Identifica o arquivo de video overlay
         "-i", "audio.mp3",         //Identifica o arquivo de audio
-        "-filter_complex",         //Sobrepoe o video principal + overlay
-        `[1:v] 
-           chromakey=0x00FF00:0.25:0.08,
-           scale=iw*${scale}:ih*${scale}[ov];
-         [0:v][ov]
-           overlay=(W-w)/2:(H-h)/2: 
-           enable='between(t,0,8)'
-         [v]`,
-             //1 = overlay | 0 = video principal
-             //Primeiro está retirando o chroma key, redimencionando o overlay, depois posiciona no centro
-             //chromakey=COR:SIMILARIDADE:SUAVIZAÇÃO 
-                //COR => R=00|G=FF|B=00 --> Verde Puro
-                //SIMILARIDADE => 0.10(Remove pouco verde)... 0.40(Remove quase tudo)
-                //SUAVIZAÇÃO => Suavização da borda, evita efeito serrilhado
-             //scale=iw*2:ih*2 -->   
-             //W = largura video principal / w = largura overlay / H = altura video principal / h = altura overlay
+        "-filter_complex", filterComplex, //Sobrepoe o video principal + overlay
+                                   //1 = overlay | 0 = video principal
+                                   //Primeiro está retirando o chroma key, redimencionando o overlay, depois posiciona no centro
+                                   //chromakey=COR:SIMILARIDADE:SUAVIZAÇÃO 
+                                     //COR => R=00|G=FF|B=00 --> Verde Puro
+                                     //SIMILARIDADE => 0.10(Remove pouco verde)... 0.40(Remove quase tudo)
+                                     //SUAVIZAÇÃO => Suavização da borda, evita efeito serrilhado
+                                   //scale=iw*2:ih*2 -->   
+                                   //W = largura video principal / w = largura overlay / H = altura video principal / h = altura overlay
         "-map", "[v]",             //Usa video filtrado
+        -filter_complex `[2:a][1:a]amix=inputs=2:duration=first[aout];`,
+        "-map", [aout], 
         "-map", "2:a",             //Usa audio do MP3
         "-c:v", "libx264",         //Mantem o arquivo original - libx264: Permite editar o video
-        "-preset", "ultrafast",    //Exportação muito mais rápida
-        "-crf", "18",              //Mantem qualidade excelente
+        "-preset", "superfast",     //Compressão do arquivo: ultrafast, superfast, veryfast, faster, fast, medium (padrão)...
+        "-crf", "20",              //Qualidade do video
         "-c:a", "aac",             //Converte audio em AAC
         "-t", `${audioDuration}`,  //Termina exatamente ao tamanho do MP3
         "saida.mp4"                //Arquivo gerado
     ]);
-    console.log("MP4 gerado pelo FFMPEG.");
+    /*
+    COMPRESSÃO:
+    Preset	   Velocidade	          Qualidade por tamanho
+    ultrafast  ⭐⭐⭐⭐⭐⭐⭐⭐	❌ pior compressão
+    superfast  ⭐⭐⭐⭐⭐⭐⭐	  ❌
+    veryfast   ⭐⭐⭐⭐⭐⭐	     ⚠️
+    faster	   ⭐⭐⭐⭐⭐        ✅
+    fast	     ⭐⭐⭐⭐           ✅
+    medium	   ⭐⭐⭐             ⭐ padrão
+    slow	     ⭐⭐                ⭐⭐⭐
+    slower	   ⭐                  ⭐⭐⭐⭐
+
+    QUALIDADE:
+    CRF 10 = Insano
+    CRF 18 = Quase original (praticamente sem perda visual)
+    CRF 20 = Excelente
+    CRF 23 = Muito boa (padrão x264)
+    CRF 25 = Boa
+    CRF 28 = Média
+    CRF 32 = Ruim
+
+    O que acontece na prática: Imagine um vídeo final de 10 minutos em 720p.
+    ultrafast + CRF 23
+      Exporta em:20~40 segundos
+      Arquivo:250 MB
+      Qualidade: Média (Pode aparecer blocos e "craquelados")
+
+    veryfast + CRF 23
+      Exporta em:40~90 segundos
+      Arquivo:180 MB
+      Qualidade:Boa
+
+    faster + CRF 20
+      Exporta em:1~2 minutos
+      Arquivo:140 MB
+      Qualidade:Muito boa
+
+    medium + CRF 18
+      Exporta em:2~5 minutos
+      Arquivo:100 MB
+      Qualidade:Excelente
+    */
+    console.log(`Tempo total MP4 gerado pelo FFMPEG: ${formatElapsedTime(startTime)}`);
   }catch(error){
     console.log("ERRO FFMPEG: ", error);
   }
@@ -186,8 +276,7 @@ async function exportVideo(){
   a.click(); //Clicando no link para iniciar o download
   URL.revokeObjectURL(url); //Limpa a memória
   console.log("Download iniciado.");
-
-
+  console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
 }
 
 async function init(){
