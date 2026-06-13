@@ -19,9 +19,15 @@ let dragOffsetY = 0; //Posição Y (horizontal)
 const videoResolution = document.getElementById("videoResolution");
 //CHROMAKEY - CANVA DE VIDEO OVERLAY(INSCREVA-SE):
 const overlayInput = document.getElementById("overlayScale"); //Escala inicial do overlay
-//BOTAO EXPORTAR
+//BOTOES (EXPORTAR / CANCELAR)
 const outputResolution = document.getElementById("outputResolution");
 const btExportar = document.getElementById("btExportar");
+const btCancelar = document.getElementById("btCancelar");
+let exportCancelled = true; //Controle de cancelamento
+let exporting = false; //Controle de exportação iniciado como falso
+//BARRA DE PROGRESSO
+const progressFill = document.getElementById("progressFill");
+const progressText = document.getElementById("progressText");
 
 // =======================================
 // AUDIO PRINCIPAL
@@ -149,6 +155,8 @@ canvas.addEventListener("mouseleave", () =>{
 // =======================================
 const ffmpeg = new FFmpeg(); //Instancia principal do FFmpeg
 let ffmpegLoaded = false; //Controle para saber se já carregou
+video.pause();
+overlayVideo.pause();
 async function loadFFmpeg(){ 
   if(ffmpegLoaded) return; //Se já carregou anteriormente...
   console.log("Carregando FFmpeg...");
@@ -166,12 +174,23 @@ function formatElapsedTime(startTime){
   return `${minutes}m ${seconds}s`;
 }
 
+//INICIO DA BARRA DE PROGRESSO
+ffmpeg.on("progress", ({progress}) => {
+  const percent = Math.floor(progress * 100);
+  progressFill.style.width = percent + "%";
+  progressText.textContent = percent + "%";
+});
+
 // =======================================
 // EXPORTAÇÃO MP3 + MP4
 // =======================================
 btExportar.addEventListener("click", exportVideo);
 async function exportVideo(){
   const startTime = Date.now(); //Tempo atual
+  exportCancelled = false; //Iniciar cancelamento como falso
+  exporting = true; //Controle de exportação iniciado como verdadeiro
+  progressFill.style.width = "0%"; //Iniciar estilo na barra de download com tamanho de 0%
+  progressText.textContent = "0%"; //Iniciar texto na barra de download com 0%
 
   if(!audioFile){
     alert("Selecione o arquivo MP3!");
@@ -347,11 +366,19 @@ async function exportVideo(){
   console.log("Overlay Width:", overlayWidth);
   console.log("Overlay Height:", overlayHeight);
   console.log("Centro X:",overlayX + overlayWidth / 2);
-  console.log("Centro Canvas:", canvas.width / 2); 
+  console.log("Centro Canvas:", canvas.width / 2);
+  progressFill.style.width = "100%";
+  progressText.textoContent = "100%";
+  exporting = false; //Controle de exportação iniciado como falso
+  video.play(); //Quando terminar a exportacao pode iniciar o preview do video principal novamente
+  overlayVideo.play(); //Quando terminar a exportacao pode iniciar o preview do overlay novamente
 }
 
 function drawPreview(){
   requestAnimationFrame(drawPreview);
+  if(exporting){
+    return;
+  }
   if(video.readyState < 2) return;
   if(loopMode.value === "reverse"){
     video.pause();
@@ -402,6 +429,23 @@ function drawPreview(){
     ctx.drawImage(chromaCanvas, overlayX, overlayY, overlayWidth, overlayHeight);
   }
 }
+
+//Função para cancelar download
+btCancelar.addEventListener("click", async () => {
+  exportCancelled = true;
+  exporting = false; //Controle de exportação iniciado como falso
+  video.play(); //Quando cancelar exportação pode iniciar o preview do video principal novamente
+  overlayVideo.play(); //Quando cancelar exportação pode iniciar o preview do overlay novamente
+  console.log("Cancelamento do donwload solicitado.");
+  try{
+    await ffmpeg.terminate(); //Interrompe o FFmpeg
+    ffpegLoaded = false;
+    alert("Download cancelado.");
+  }
+  catch(error){
+    console.log(error);
+  }
+});
 
 async function init(){
   console.log("Projeto carregado com sucesso");
