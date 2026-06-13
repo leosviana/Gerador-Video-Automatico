@@ -158,7 +158,6 @@ async function loadFFmpeg(){
 }
 
 //CÁLCULO DE TEMPO DOS PROCESSOS
-const startTime = Date.now(); //Tempo atual
 function formatElapsedTime(startTime){
   const elapsedMs = Date.now() - startTime;
   const totalSeconds = Math.floor(elapsedMs / 1000);
@@ -172,6 +171,8 @@ function formatElapsedTime(startTime){
 // =======================================
 btExportar.addEventListener("click", exportVideo);
 async function exportVideo(){
+  const startTime = Date.now(); //Tempo atual
+
   if(!audioFile){
     alert("Selecione o arquivo MP3!");
     return;
@@ -198,14 +199,12 @@ async function exportVideo(){
     new Uint8Array(await audioFile.arrayBuffer())
   );
   console.log("MP3 enviado para o FFmpeg.");
-  console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
   //ARQUIVO MP4 - Envia o MP4 para a memória do FFmpeg
   await ffmpeg.writeFile(
     "video.mp4",
     new Uint8Array(await videoFile.arrayBuffer())
   );
   console.log("MP4 enviado para o FFmpeg.");
-  console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
   //ARQUIVO OVERLAY - Envia o arquivo inscreva-se para a memória do FFmpeg
   const overlayResponse = await fetch(overlayPath); //Carrega arquivo overlay da pasta raiz
   console.log("Status overlay: ", overlayResponse.status);
@@ -214,7 +213,6 @@ async function exportVideo(){
   const overlayUint8 = new Uint8Array(overlayBuffer); //Converte o arquivo para ArrayBuffer
   await ffmpeg.writeFile("overlay.mp4", overlayUint8); //Envia overlay para memória do FFmpeg
   console.log("Overlay enviado para o FFmpeg.");
-  console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
   const scale = parseFloat(overlayInput.value);
   const videoWidth = video.videoWidth;
   const videoHeight = video.videoHeight;
@@ -277,8 +275,8 @@ async function exportVideo(){
         "-map", "[v]",             //Usa video filtrado
         "-map", "[aout]",          //Unir audio do MP3 com o audio do video do overlay        
         "-c:v", "libx264",         //Mantem o arquivo original - libx264: Permite editar o video
-        "-preset", "superfast",     //Compressão do arquivo: ultrafast, superfast, veryfast, faster, fast, medium (padrão)...
-        "-crf", "20",              //Qualidade do video
+        "-preset", "ultrafast",     //Compressão do arquivo: ultrafast, superfast, veryfast, faster, fast, medium (padrão)...
+        "-crf", "23",              //Qualidade do video
         "-c:a", "aac",             //Converte audio em AAC
         "-t", `${audioDuration}`,  //Termina exatamente ao tamanho do MP3
         "saida.mp4"                //Arquivo gerado
@@ -325,7 +323,6 @@ async function exportVideo(){
       Arquivo:100 MB
       Qualidade:Excelente
     */
-    console.log(`Tempo total MP4 gerado pelo FFMPEG: ${formatElapsedTime(startTime)}`);
   }catch(error){
     console.log("ERRO FFMPEG: ", error);
   }
@@ -344,8 +341,8 @@ async function exportVideo(){
   a.download = "video-final.mp4"; //Cria opção para realiza o download do link
   a.click(); //Clicando no link para iniciar o download
   URL.revokeObjectURL(url); //Limpa a memória
-  console.log("Download iniciado.");
-  console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
+  console.log("Download finalizado.");
+  console.log(`Tempo de download: ${formatElapsedTime(startTime)}`);
 
   console.log("Overlay Width:", overlayWidth);
   console.log("Overlay Height:", overlayHeight);
