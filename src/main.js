@@ -184,6 +184,7 @@ ffmpeg.on("progress", ({progress}) => {
 // =======================================
 // EXPORTAÇÃO MP3 + MP4
 // =======================================
+
 btExportar.addEventListener("click", exportVideo);
 async function exportVideo(){
   const startTime = Date.now(); //Tempo atual
@@ -191,6 +192,8 @@ async function exportVideo(){
   exporting = true; //Controle de exportação iniciado como verdadeiro
   progressFill.style.width = "0%"; //Iniciar estilo na barra de download com tamanho de 0%
   progressText.textContent = "0%"; //Iniciar texto na barra de download com 0%
+  btExportar.disabled = true;
+  btCancelar.disabled = false;
 
   if(!audioFile){
     alert("Selecione o arquivo MP3!");
@@ -202,6 +205,7 @@ async function exportVideo(){
   }
 
   await loadFFmpeg(); //Garante que o FFmpeg seja carregado
+  if(exportCancelled) return;
 
   audio.src = URL.createObjectURL(audioFile); //Cria URL temporaria para o audio MP3
   await new Promise(resolve => { //Aguarda carregamento do audio MP3
@@ -368,10 +372,12 @@ async function exportVideo(){
   console.log("Centro X:",overlayX + overlayWidth / 2);
   console.log("Centro Canvas:", canvas.width / 2);
   progressFill.style.width = "100%";
-  progressText.textoContent = "100%";
+  progressText.textContent = "100%";
   exporting = false; //Controle de exportação iniciado como falso
   video.play(); //Quando terminar a exportacao pode iniciar o preview do video principal novamente
   overlayVideo.play(); //Quando terminar a exportacao pode iniciar o preview do overlay novamente
+  btExportar.disabled = false;
+  btCancelar.disabled = true;
 }
 
 function drawPreview(){
@@ -434,12 +440,17 @@ function drawPreview(){
 btCancelar.addEventListener("click", async () => {
   exportCancelled = true;
   exporting = false; //Controle de exportação iniciado como falso
-  video.play(); //Quando cancelar exportação pode iniciar o preview do video principal novamente
-  overlayVideo.play(); //Quando cancelar exportação pode iniciar o preview do overlay novamente
+  btExportar.disabled = false;
+  btCancelar.disabled = true;
   console.log("Cancelamento do donwload solicitado.");
   try{
     await ffmpeg.terminate(); //Interrompe o FFmpeg
-    ffpegLoaded = false;
+    ffmpegLoaded = false;
+    exporting = false;
+    video.play(); //Quando cancelar exportação pode iniciar o preview do video principal novamente
+    overlayVideo.play(); //Quando cancelar exportação pode iniciar o preview do overlay novamente
+    progressFill.style.width = "0%";
+    progressText.textContent = "Cancelado";
     alert("Download cancelado.");
   }
   catch(error){
