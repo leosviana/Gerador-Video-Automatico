@@ -16,6 +16,7 @@ const loopMode = document.getElementById("loopMode"); //Seleciona o modo de repe
 let dragging = false; //Controle de arrastar o mouse
 let dragOffsetX = 0; //Posição X (vertical)
 let dragOffsetY = 0; //Posição Y (horizontal)
+const videoResolution = document.getElementById("videoResolution");
 //CHROMAKEY - CANVA DE VIDEO OVERLAY(INSCREVA-SE):
 const overlayInput = document.getElementById("overlayScale"); //Escala inicial do overlay
 //BOTAO EXPORTAR
@@ -42,6 +43,31 @@ video.loop = true; //Faz o video repetir infinitamente
 videoInput.addEventListener("change", (event) => { 
     videoFile = event.target.files[0]; //Salva o arquivo MP4 selecionado pelo usuário
     console.log("Video carregado:", videoFile);
+
+    video.onloadedmetadata = () => {
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+      let label = `${width}x${height}`;
+      if(height <= 240){
+        label += " (240p)";
+      }
+      else if(height <= 360){
+        label += " (360p)";
+      }
+      else if(height <= 720){
+        label += " (720p)";
+      }
+      else if(height <= 1080){
+        label += " (1080p)";
+      }
+      else if(height <= 1440){
+        label += " (1440p)"
+      }
+      else{
+        label += " (4K+)";
+      }
+      videoResolution.textContent = `Resolução do vídeo: ${label}`;
+    }
 });
 
 videoInput.addEventListener("change", () => {
@@ -69,7 +95,7 @@ overlayVideo.addEventListener("loadeddata", () => {
 });
 
 //Posição do overlay
-let overlayScale = 0.5; //Escala overlay (slider)
+let overlayScale = parseFloat(overlayInput.value); //Escala overlay (slider)
 let overlayX = 400; //Posição horizontal em pixel do canvas
 let overlayY = 150; //Posição vertical em pixel do canvas
 let overlayPercentX = 0; //Posição relativa (0 e 1). Será usada na exportação para manter a mesma posição
@@ -322,6 +348,11 @@ async function exportVideo(){
   URL.revokeObjectURL(url); //Limpa a memória
   console.log("Download iniciado.");
   console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
+
+  console.log("Overlay Width:", overlayWidth);
+  console.log("Overlay Height:", overlayHeight);
+  console.log("Centro X:",overlayX + overlayWidth / 2);
+  console.log("Centro Canvas:", canvas.width / 2); 
 }
 
 function drawPreview(){

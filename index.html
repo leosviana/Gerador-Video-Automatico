@@ -20,7 +20,7 @@
                 <option value="reverse">Reverso</option>
             </select>
             <label>Tamanho Overlay: </label>
-            <input type="range" id="overlayScale" min="0.10" max="0.50" step="0.05" value="0.25">
+            <input type="range" id="overlayScale" min="0.10" max="1" step="0.05" value="0.55">
             <!-- range: Cria um controle deslizante (slider) para arrastar a bolinha para esquerda ou direita -->
             <!-- min = 0.10 é o menor valor permitido, nesse caso 0.10 = 10% do tamanho original / 1.0 = tamanho original / 2.0 = dobro do tamanho -->
             <!-- max = 4 é o maior valor permitido (4 vezes o tamanho original) -->
@@ -30,6 +30,9 @@
         <div class="preview-container">
             <canvas id="previewCanvas"></canvas>
             <video id="overlayVideo" muted autoplay loop playsinline style="display:none;"></video>
+            <div class="video-info">
+                <span id="videoResolution">Resolução do vídeo: Nenhum vídeo carregado</span>
+            </div>
         </div>
         <div>
             <button id="btExportar">Exportar Vídeo</button>
