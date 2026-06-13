@@ -20,6 +20,7 @@ const videoResolution = document.getElementById("videoResolution");
 //CHROMAKEY - CANVA DE VIDEO OVERLAY(INSCREVA-SE):
 const overlayInput = document.getElementById("overlayScale"); //Escala inicial do overlay
 //BOTAO EXPORTAR
+const outputResolution = document.getElementById("outputResolution");
 const btExportar = document.getElementById("btExportar");
 
 // =======================================
@@ -43,6 +44,7 @@ video.loop = true; //Faz o video repetir infinitamente
 videoInput.addEventListener("change", (event) => { 
     videoFile = event.target.files[0]; //Salva o arquivo MP4 selecionado pelo usuário
     console.log("Video carregado:", videoFile);
+    video.src = URL.createObjectURL(videoFile);
 
     video.onloadedmetadata = () => {
       const width = video.videoWidth;
@@ -67,16 +69,12 @@ videoInput.addEventListener("change", (event) => {
         label += " (4K+)";
       }
       videoResolution.textContent = `Resolução do vídeo: ${label}`;
-    }
-});
-
-videoInput.addEventListener("change", () => {
-  video.src = URL.createObjectURL(videoFile);
-  video.play();
+      console.log("Resolução detectada: ", label);
+    };
+      video.play();
 });
 
 let reverseDirection = 1;
-
 
 // =======================================
 // OVERLAY (SE INSCREVA)
@@ -247,18 +245,18 @@ async function exportVideo(){
     console.log("Vídeo PingPong criado.");
     console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
   }
+  //Resolução saída
+  let videoChain = `overlay=${exportX}:${exportY}`;
+  if(outputResolution.value !== "original"){
+    videoChain += `,scale=${outputResolution.value}`;
+  }
+
   // Filtro principal
   const filterComplex = `
-    [1:v]
-    chromakey=0x00FF00:0.25:0.08,
-    scale=iw*${scale}:ih*${scale}[ov];
-    [0:v][ov]
-    overlay=${exportX}:${exportY}:
-    enable='between(t,0,8)'
-    [v];
-    [2:a][1:a]
-    amix=inputs=2:duration=first[aout]
-  `;
+    [1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
+    `[0:v][ov]${videoChain}[v];` +
+    `[2:a][1:a]amix=inputs=2:duration=first[aout]`;
+  ;
 
   //FFMPEG - COMANDOS PARA PROCESSAR OS ARQUIVOS:
   try{
