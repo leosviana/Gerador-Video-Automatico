@@ -31,9 +31,9 @@ h1{
 .preview-container{ /*ALTERAR SOMENTE AQUI PARA TAMANHO DO PREVIEW DE VIDEO */
     border: 1px solid #333;
     position: relative;
-    width: 100%;
-    max-width: 300px;
-    aspect-ratio: 16 / 9;
+    width: fit-content;    
+    /*max-width: 300px;*/
+    /*aspect-ratio: 16 / 9;*/
     margin: auto;
     background: #000;
     overflow: hidden;

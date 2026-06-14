@@ -8,10 +8,9 @@ const audioInput = document.getElementById("audioInput"); //Campo de upload do a
 let videoFile = null; //Armazena o arquivo de video
 let audioFile = null; //Armazena o arquivo de audio
 //CANVA DE VIDEO PRINCIPAL:
+const previewContainer = document.querySelector(".preview-container");
 const canvas = document.getElementById("previewCanvas"); //Canvas onde sera exibido o preview
 const ctx = canvas.getContext("2d"); // Contexto 2D do canvas para desenhar imagens e videos
-canvas.width = 1280; //Define resolucao de largura do canvas
-canvas.height = 720; //Define resolucao de altura do canvas
 const loopMode = document.getElementById("loopMode"); //Seleciona o modo de repeticao
 let dragging = false; //Controle de arrastar o mouse
 let dragOffsetX = 0; //Posição X (vertical)
@@ -76,6 +75,12 @@ videoInput.addEventListener("change", (event) => {
   video.onloadedmetadata = () => {
     const width = video.videoWidth;
     const height = video.videoHeight;
+    canvas.width = video.videoWidth; //Define resolucao de largura do canvas
+    canvas.height = video.videoHeight; //Define resolucao de altura do canvas
+    overlayX = (canvas.width - overlayWidth) / 2; //Centraliza o overlay em largura no preview
+    overlayY = (canvas.height - overlayHeight) / 2; //Centraliza o overlay em altura no preview
+    previewContainer.style.width = video.videoWith + "px";
+    previewContainer.style.height = video.videoHeight + "px";
     let label = `${width}x${height}`;
     if(height <= 240){
       label += " (240p)";
@@ -100,6 +105,17 @@ videoInput.addEventListener("change", (event) => {
     }
     videoResolution.textContent = `Resolução do vídeo: ${label}`;
     console.log("Resolução detectada: ", label);
+    console.log(
+      "Canvas:",
+      canvas.width,
+      canvas.height
+    );
+
+    console.log(
+      "Video:",
+      video.videoWidth,
+      video.videoHeight
+    );
   };
     video.play();
 });
@@ -277,12 +293,13 @@ async function exportVideo(){
   const scale = parseFloat(overlayInput.value);
   const videoWidth = video.videoWidth;
   const videoHeight = video.videoHeight;
+  //Calcula o centro do overlay no preview:
   const centerX = overlayX + (overlayWidth / 2); //Centro X do overlay no canva
   const centerY = overlayY + (overlayHeight / 2); //Centro Y do overlay no canva
   const centerPercentX = centerX / canvas.width; //Converte o centro X para porcentagem
-  const centerPercentY = centery / canvas.height; //Converte o centro Y para porcentagem
-  //const exportX = Math.floor(overlayPercentX * videoWidth);
-  //const exportY = Math.floor(overlayPercentY * videoHeight);
+  const centerPercentY = centerY / canvas.height; //Converte o centro Y para porcentagem
+  const exportX = Math.floor(overlayPercentX * videoWidth);
+  const exportY = Math.floor(overlayPercentY * videoHeight);
   //console.log("Video Width:", videoWidth);
   //console.log("Video Height:", videoHeight);
   //console.log("Export X: ", exportX); //Exibe coordenadas finais X
@@ -515,9 +532,15 @@ function drawPreview(){
       }
     }
     chromaCtx.putImageData(frame,0,0);
+    console.log("DRAW", overlayX, overlayY, overlayWidth, overlayHeight);
     ctx.drawImage(chromaCanvas, overlayX, overlayY, overlayWidth, overlayHeight);
   }
 }
+
+console.log(
+  overlayVideo.videoWidth,
+  overlayVideo.videoHeight
+);
 
 //Função para cancelar download
 btCancelar.addEventListener("click", async () => {
