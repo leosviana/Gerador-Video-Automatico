@@ -29,6 +29,7 @@ let exporting = false; //Controle de exportação iniciado como falso
 const progressFill = document.getElementById("progressFill");
 const progressText = document.getElementById("progressText");
 const progressContainer = document.querySelector(".progress-container");
+let showProgress = false; //Barra não será carregada antes de gerar o loop
 
 //CONTROLE DE EXIBIÇÃO DOS BOTOES
 function updateButtons(){
@@ -150,7 +151,7 @@ canvas.addEventListener("mousedown", (e) =>{
   dragging = true;
   dragOffsetX = mouseX - overlayX;
   dragOffsetY = mouseY - overlayY;
-  console.log("Drag iniciado");
+  //console.log("Drag iniciado");
 }
 });
 //Movendo o mouse
@@ -176,13 +177,13 @@ canvas.addEventListener("mouseleave", () =>{
 // =======================================
 // CARREGA FFMPEG APENAS UMA VEZ
 // =======================================
-const ffmpeg = new FFmpeg(); //Instancia principal do FFmpeg
+let ffmpeg = new FFmpeg(); //Instancia principal do FFmpeg
 let ffmpegLoaded = false; //Controle para saber se já carregou
 video.pause();
 overlayVideo.pause();
 async function loadFFmpeg(){ 
   if(ffmpegLoaded) return; //Se já carregou anteriormente...
-  console.log("Carregando FFmpeg...");
+  //console.log("Carregando FFmpeg...");
   await ffmpeg.load(); //Faz download dos arquivos internos: https://app.unpkg.com/@ffmpeg/core@0.11.0/files/dist
   ffmpegLoaded = true;
   console.log("FFmpeg carregado com sucesso.");
@@ -199,7 +200,10 @@ function formatElapsedTime(startTime){
 
 //INICIO DA BARRA DE PROGRESSO
 ffmpeg.on("progress", ({progress}) => {
-  const percent = Math.floor(progress * 100);
+  if(!showProgress){
+    return;
+  }
+  const percent = Math.min(100, Math.max(0, Math.floor(progress * 100)));
   progressFill.style.width = percent + "%";
   progressText.textContent = percent + "%";
 });
@@ -214,6 +218,7 @@ async function exportVideo(){
   exporting = true; //Controle de exportação iniciado como verdadeiro
   progressContainer.style.display = "block"; //Exibir barra de progresso
   updateButtons(); //Executa a função de exibir os botões
+  showProgress = false;
   progressFill.style.width = "0%"; //Iniciar estilo na barra de download com tamanho de 0%
   progressText.textContent = "0%"; //Iniciar texto na barra de download com 0%
 
@@ -236,7 +241,6 @@ async function exportVideo(){
   const audioDuration = Math.floor(audio.duration); //Duração total do MP3 em segundos
   const last20seconds = audioDuration - 20; //Momento em que o overlay deve aparecer
   console.log("Duração MP3: ", audioDuration);
-  console.log("Ultimos 20 segundos começa em: ", last20seconds);
 
   //ARQUIVO MP3 - Envia o MP3 para a memória do FFmpeg
   await ffmpeg.writeFile(
@@ -245,14 +249,14 @@ async function exportVideo(){
   );
   console.log("MP3 enviado para o FFmpeg.");
 
-  console.log("Nome: ", videoFile.name);
-  console.log("Tamanho: ", videoFile.size);
-  console.log("Tipo: ", videoFile.type);
+  //console.log("Nome: ", videoFile.name);
+  //console.log("Tamanho: ", videoFile.size);
+  //console.log("Tipo: ", videoFile.type);
   
   //ARQUIVO MP4 - Envia o MP4 para a memória do FFmpeg
   try{
     const buffer = await videoFile.arrayBuffer();
-    console.log("Buffer OK: ", buffer.byteLength);
+    //console.log("Buffer OK: ", buffer.byteLength);
     await ffmpeg.writeFile(
       "video.mp4",
       new Uint8Array(await videoFile.arrayBuffer())
@@ -264,21 +268,25 @@ async function exportVideo(){
   
   //ARQUIVO OVERLAY - Envia o arquivo inscreva-se para a memória do FFmpeg
   const overlayResponse = await fetch(overlayPath); //Carrega arquivo overlay da pasta raiz
-  console.log("Status overlay: ", overlayResponse.status);
+  //console.log("Status overlay: ", overlayResponse.status);
   const overlayBuffer = await overlayResponse.arrayBuffer(); //Converte o arquivo para ArrayBuffer
-  console.log("Overlay carregado: ", overlayBuffer.byteLength);
+  //console.log("Overlay carregado: ", overlayBuffer.byteLength);
   const overlayUint8 = new Uint8Array(overlayBuffer); //Converte o arquivo para ArrayBuffer
   await ffmpeg.writeFile("overlay.mp4", overlayUint8); //Envia overlay para memória do FFmpeg
   console.log("Overlay enviado para o FFmpeg.");
   const scale = parseFloat(overlayInput.value);
   const videoWidth = video.videoWidth;
   const videoHeight = video.videoHeight;
-  const exportX = Math.floor(overlayPercentX * videoWidth);
-  const exportY = Math.floor(overlayPercentY * videoHeight);
-  console.log("Video Width:", videoWidth);
-  console.log("Video Height:", videoHeight);
-  console.log("Export X: ", exportX); //Exibe coordenadas finais X
-  console.log("Export Y: ", exportY); //Exibe coordenadas finais Y
+  const centerX = overlayX + (overlayWidth / 2); //Centro X do overlay no canva
+  const centerY = overlayY + (overlayHeight / 2); //Centro Y do overlay no canva
+  const centerPercentX = centerX / canvas.width; //Converte o centro X para porcentagem
+  const centerPercentY = centery / canvas.height; //Converte o centro Y para porcentagem
+  //const exportX = Math.floor(overlayPercentX * videoWidth);
+  //const exportY = Math.floor(overlayPercentY * videoHeight);
+  //console.log("Video Width:", videoWidth);
+  //console.log("Video Height:", videoHeight);
+  //console.log("Export X: ", exportX); //Exibe coordenadas finais X
+  //console.log("Export Y: ", exportY); //Exibe coordenadas finais Y
 
   //LOOP REVERSO DO VIDEO PRINCIPAL
   const selectedLoop = loopMode.value;
@@ -312,6 +320,21 @@ async function exportVideo(){
     `[0:v][ov]${videoChain}[v];` +
     `[2:a][1:a]amix=inputs=2:duration=first[aout]`;
   ;
+
+  //Ativa a barra de progresso novamente após gerar o loop
+  showProgress = true;
+  progressFill.style.width = "0%";
+  progressText.textContent = "0%";
+
+console.log({
+  overlayX,
+  overlayY,
+  overlayWidth,
+  overlayHeight,
+  exportX,
+  exportY,
+  scale
+});
 
   //FFMPEG - COMANDOS PARA PROCESSAR OS ARQUIVOS:
   try{
@@ -388,9 +411,9 @@ async function exportVideo(){
     console.error("ERRO FFMPEG: ", error);
   }
 
-  console.log("Tentando ler saida .MP4");
-  const files = await ffmpeg.listDir("/");
-  console.log(files);
+  //console.log("Tentando ler saida .MP4");
+  //const files = await ffmpeg.listDir("/");
+  //console.log(files);
 
   const data = await ffmpeg.readFile("saida.mp4"); //Lê arquivo final gerado
   const blob = new Blob( //Criar blob para download em formato MP4
@@ -429,8 +452,8 @@ async function exportVideo(){
     overlayHeight = 0; //Reseta tamanho do overlay de altura
     overlayX = 400; //Reseta posição X do overlay
     overlayY = 150; //Reseta posição Y do overlay
-    updateButtons(); //Executa a função de exibir os botões
     exporting = false; //Controle de exportação iniciado como falso
+    updateButtons(); //Executa a função de exibir os botões
 
   //console.log("Overlay Width:", overlayWidth);
   //console.log("Overlay Height:", overlayHeight);
@@ -501,6 +524,7 @@ btCancelar.addEventListener("click", async () => {
   exportCancelled = true;
   exporting = false; //Controle de exportação iniciado como falso
   updateButtons(); //Executa a função de exibir os botões
+  showProgress = false; //Barra não será carregada
   progressContainer.style.display = "none";
   progressFill.style.width = "0%";
   progressText.textContent = "0%";
