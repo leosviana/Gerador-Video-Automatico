@@ -184,7 +184,6 @@ ffmpeg.on("progress", ({progress}) => {
 // =======================================
 // EXPORTAÇÃO MP3 + MP4
 // =======================================
-
 btExportar.addEventListener("click", exportVideo);
 async function exportVideo(){
   const startTime = Date.now(); //Tempo atual
@@ -348,6 +347,16 @@ async function exportVideo(){
     */
   }catch(error){
     console.log("ERRO FFMPEG: ", error);
+    if(exportCancelled){
+      console.log("Download cancelado.");
+      return;
+    }
+    throw error;
+  }
+
+  if(exportCancelled){
+    console.log("Download cancelado.");
+    return;
   }
 
   console.log("Tentando ler saida .MP4");
@@ -442,7 +451,7 @@ btCancelar.addEventListener("click", async () => {
   exporting = false; //Controle de exportação iniciado como falso
   btExportar.disabled = false;
   btCancelar.disabled = true;
-  console.log("Cancelamento do donwload solicitado.");
+  console.log("Cancelamento do download solicitado.");
   try{
     await ffmpeg.terminate(); //Interrompe o FFmpeg
     ffmpegLoaded = false;
