@@ -47,37 +47,50 @@ const video = document.createElement("video"); //Cria um elemento de video invis
 video.muted = true; //Remove audio do preview
 video.loop = true; //Faz o video repetir infinitamente
 //Captura o MP4 selecionado
-videoInput.addEventListener("change", (event) => { 
-    videoFile = event.target.files[0]; //Salva o arquivo MP4 selecionado pelo usuário
-    console.log("Video carregado:", videoFile);
-    video.src = URL.createObjectURL(videoFile);
+videoInput.addEventListener("change", (event) => {
+  const file = event.target.files?.[0]; //Salva o arquivo MP4 selecionado pelo usuário
+  if(!file){ //Arquivo selecionado é diferente do selecionado anteriormente...
+    console.log("Seleção de vídeo cancelada.");
+    return;
+  }
+  videoFile = file; //Só atualiza a variável se realmente confirmou a escolha do vídeo
+  let currentVideoUrl = null;
+  if(currentVideoUrl){
+    URL.revokeObjectURL(currentVideoUrl); //Limpa a memória (blob) do vídeo selecionado anteriormente
+  }
+  currentVideoUrl = URL.createObjectURL(videoFile); //Cria a URL temporária do video
+  console.log("Video carregado:", videoFile);
+  video.src = currentVideoUrl;
 
-    video.onloadedmetadata = () => {
-      const width = video.videoWidth;
-      const height = video.videoHeight;
-      let label = `${width}x${height}`;
-      if(height <= 240){
-        label += " (240p)";
-      }
-      else if(height <= 360){
-        label += " (360p)";
-      }
-      else if(height <= 720){
-        label += " (720p)";
-      }
-      else if(height <= 1080){
-        label += " (1080p)";
-      }
-      else if(height <= 1440){
-        label += " (1440p)"
-      }
-      else{
-        label += " (4K+)";
-      }
-      videoResolution.textContent = `Resolução do vídeo: ${label}`;
-      console.log("Resolução detectada: ", label);
-    };
-      video.play();
+  video.onloadedmetadata = () => {
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    let label = `${width}x${height}`;
+    if(height <= 240){
+      label += " (240p)";
+    }
+    else if(height <= 360){
+      label += " (360p)";
+    }
+    else if(height <= 480){
+      label += " (480p - SD)";
+    }
+    else if(height <= 720){
+      label += " (720p - HD)";
+    }
+    else if(height <= 1080){
+      label += " (1080p - Full HD)";
+    }
+    else if(height <= 1440){
+      label += " (1440p - 2K)"
+    }
+    else{
+      label += " (4K+)";
+    }
+    videoResolution.textContent = `Resolução do vídeo: ${label}`;
+    console.log("Resolução detectada: ", label);
+  };
+    video.play();
 });
 
 let reverseDirection = 1;
@@ -221,12 +234,24 @@ async function exportVideo(){
     new Uint8Array(await audioFile.arrayBuffer())
   );
   console.log("MP3 enviado para o FFmpeg.");
+
+  console.log("Nome: ", videoFile.name);
+  console.log("Tamanho: ", videoFile.size);
+  console.log("Tipo: ", videoFile.type);
+  
   //ARQUIVO MP4 - Envia o MP4 para a memória do FFmpeg
-  await ffmpeg.writeFile(
-    "video.mp4",
-    new Uint8Array(await videoFile.arrayBuffer())
-  );
-  console.log("MP4 enviado para o FFmpeg.");
+  try{
+    const buffer = await videoFile.arrayBuffer();
+    console.log("Buffer OK: ", buffer.byteLength);
+    await ffmpeg.writeFile(
+      "video.mp4",
+      new Uint8Array(await videoFile.arrayBuffer())
+    );
+    console.log("MP4 enviado para o FFmpeg.");
+  }catch(error){
+    console.log("Erro ao ler vídeo: ", error);
+  }
+  
   //ARQUIVO OVERLAY - Envia o arquivo inscreva-se para a memória do FFmpeg
   const overlayResponse = await fetch(overlayPath); //Carrega arquivo overlay da pasta raiz
   console.log("Status overlay: ", overlayResponse.status);
@@ -372,7 +397,9 @@ async function exportVideo(){
   a.href = url; //Define que o elemento recebe o objeto criado pelo blob
   a.download = "video-final.mp4"; //Cria opção para realiza o download do link
   a.click(); //Clicando no link para iniciar o download
-  URL.revokeObjectURL(url); //Limpa a memória
+  setTimeout(() => { //Aguarda 10 segundos 
+    URL.revokeObjectURL(url); //Limpa a memória (blob) do vídeo selecionado
+  }, 10000);
   console.log("Download finalizado.");
   console.log(`Tempo de download: ${formatElapsedTime(startTime)}`);
 
