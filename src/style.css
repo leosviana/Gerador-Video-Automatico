@@ -68,9 +68,10 @@ button{
     cursor: pointer;
 }
 
-.progress-container{
+.progress-container{ /* Barra de progresso*/
     width: 100%;
     margin-top: 10px;
+    display: none; /* Inicia escondida */
 }
 
 #progressBar{

@@ -28,6 +28,14 @@ let exporting = false; //Controle de exportação iniciado como falso
 //BARRA DE PROGRESSO
 const progressFill = document.getElementById("progressFill");
 const progressText = document.getElementById("progressText");
+const progressContainer = document.querySelector(".progress-container");
+
+//CONTROLE DE EXIBIÇÃO DOS BOTOES
+function updateButtons(){
+  btExportar.disabled = !(audioFile && videoFile); //Botão exportar só habilita quando tiver MP3 e MP4 selecionado
+  btCancelar.disabled = !exporting; //Cancelar só habilita durante a exportação
+}
+updateButtons(); //Executa a função de exibir os botões
 
 // =======================================
 // AUDIO PRINCIPAL
@@ -36,8 +44,9 @@ const audio = document.createElement("audio"); //Cria o elemento de audio invisi
 audio.loop = false; //Remove o loop
 //Captura o MP3 selecionado
 audioInput.addEventListener("change", (event) => {
-    audioFile = event.target.files[0]; //Salva o arquivo MP3 selecionado pelo usuário
+    audioFile = event.target.files?.[0] || null; //Salva o arquivo MP3 selecionado pelo usuário
     console.log("Audio carregado:", audioFile);
+    updateButtons(); //Executa a função de exibir os botões
 });
 
 // =======================================
@@ -54,6 +63,7 @@ videoInput.addEventListener("change", (event) => {
     return;
   }
   videoFile = file; //Só atualiza a variável se realmente confirmou a escolha do vídeo
+  updateButtons(); //Executa a função de exibir os botões
   let currentVideoUrl = null;
   if(currentVideoUrl){
     URL.revokeObjectURL(currentVideoUrl); //Limpa a memória (blob) do vídeo selecionado anteriormente
@@ -202,10 +212,10 @@ async function exportVideo(){
   const startTime = Date.now(); //Tempo atual
   exportCancelled = false; //Iniciar cancelamento como falso
   exporting = true; //Controle de exportação iniciado como verdadeiro
+  progressContainer.style.display = "block"; //Exibir barra de progresso
+  updateButtons(); //Executa a função de exibir os botões
   progressFill.style.width = "0%"; //Iniciar estilo na barra de download com tamanho de 0%
   progressText.textContent = "0%"; //Iniciar texto na barra de download com 0%
-  btExportar.disabled = true;
-  btCancelar.disabled = false;
 
   if(!audioFile){
     alert("Selecione o arquivo MP3!");
@@ -371,17 +381,11 @@ async function exportVideo(){
       Qualidade:Excelente
     */
   }catch(error){
-    console.log("ERRO FFMPEG: ", error);
-    if(exportCancelled){
+    if(exportCancelled){ //Exportação cancelada pelo usuário
       console.log("Download cancelado.");
       return;
     }
-    throw error;
-  }
-
-  if(exportCancelled){
-    console.log("Download cancelado.");
-    return;
+    console.error("ERRO FFMPEG: ", error);
   }
 
   console.log("Tentando ler saida .MP4");
@@ -402,18 +406,38 @@ async function exportVideo(){
   }, 10000);
   console.log("Download finalizado.");
   console.log(`Tempo de download: ${formatElapsedTime(startTime)}`);
-
-  console.log("Overlay Width:", overlayWidth);
-  console.log("Overlay Height:", overlayHeight);
-  console.log("Centro X:",overlayX + overlayWidth / 2);
-  console.log("Centro Canvas:", canvas.width / 2);
   progressFill.style.width = "100%";
   progressText.textContent = "100%";
-  exporting = false; //Controle de exportação iniciado como falso
-  video.play(); //Quando terminar a exportacao pode iniciar o preview do video principal novamente
-  overlayVideo.play(); //Quando terminar a exportacao pode iniciar o preview do overlay novamente
-  btExportar.disabled = false;
-  btCancelar.disabled = true;
+  setTimeout(() => {
+    progressContainer.style.display = "none"; //Retirar barra de progresso após 15 segundos
+  }, 5000);
+  audioFile = null; //Limpa arquivo de audio da memoria
+  videoFile = null; //Limpa arquivo de video da memoria
+  audioInput.value = ""; //Limpa os campos HTML de audio
+  videoInput.value = ""; //Limpa os campos HTML de video
+  videoResolution.textContent = "Resolução do vídeo: Nenhum vídeo carregado";
+  
+  //Limpa video:
+    video.pause(); //Pausa o video
+    video.currentTime = 0; //Reseta renderização do vídeo do preview
+    video.removeAttribute("src"); //Limpa o preview
+    video.load();
+  //Limpa o canvas:
+    ctx.clearRect(0, 0, canvas.width, canvas.height); //Limpa completamente o canvas do preview
+  //Reseta overlay:
+    overlayWidth = 0; //Reseta tamanho do overlay de largura
+    overlayHeight = 0; //Reseta tamanho do overlay de altura
+    overlayX = 400; //Reseta posição X do overlay
+    overlayY = 150; //Reseta posição Y do overlay
+    updateButtons(); //Executa a função de exibir os botões
+    exporting = false; //Controle de exportação iniciado como falso
+
+  //console.log("Overlay Width:", overlayWidth);
+  //console.log("Overlay Height:", overlayHeight);
+  //console.log("Centro X:",overlayX + overlayWidth / 2);
+  //console.log("Centro Canvas:", canvas.width / 2);
+  //video.play(); //Quando terminar a exportacao pode iniciar o preview do video principal novamente
+  //overlayVideo.play(); //Quando terminar a exportacao pode iniciar o preview do overlay novamente
 }
 
 function drawPreview(){
@@ -476,9 +500,10 @@ function drawPreview(){
 btCancelar.addEventListener("click", async () => {
   exportCancelled = true;
   exporting = false; //Controle de exportação iniciado como falso
-  btExportar.disabled = false;
-  btCancelar.disabled = true;
-  console.log("Cancelamento do download solicitado.");
+  updateButtons(); //Executa a função de exibir os botões
+  progressContainer.style.display = "none";
+  progressFill.style.width = "0%";
+  progressText.textContent = "0%";
   try{
     await ffmpeg.terminate(); //Interrompe o FFmpeg
     ffmpegLoaded = false;
