@@ -179,17 +179,6 @@ canvas.addEventListener("mousedown", (e) =>{
   const scaleY = canvas.height / rect.height;
   const mouseX = (e.clientX - rect.left) * scaleX;
   const mouseY = (e.clientY - rect.top) * scaleY;
-  if( //Verifica se clicou dentro do overlay
-    mouseX >= overlayX &&
-    mouseX <= overlayX + overlayWidth &&
-    mouseY >= overlayY &&
-    mouseY <= overlayY + overlayHeight
-  ){
-    dragging = true;
-    dragOffsetX = mouseX - overlayX;
-    dragOffsetY = mouseY - overlayY;
-    //console.log("Drag iniciado");
-  }
 
   //Arrastar o texto no canva
   ctx.font = `${fontSize.value}px ${fontFamily.value}`;
@@ -206,24 +195,47 @@ canvas.addEventListener("mousedown", (e) =>{
       textOffsetY = mouseY - textY;
       return;
   }
+
+  //Arrastar o overlay no canva 
+  if( //Verifica se clicou dentro do overlay
+    mouseX >= overlayX &&
+    mouseX <= overlayX + overlayWidth &&
+    mouseY >= overlayY &&
+    mouseY <= overlayY + overlayHeight
+  ){
+    dragging = true;
+    dragOffsetX = mouseX - overlayX;
+    dragOffsetY = mouseY - overlayY;
+    draggingText = false; //Impede de mover o texto junto
+    //console.log("Drag iniciado");
+  }
+
+
 });
 //Movendo o mouse
 canvas.addEventListener("mousemove", (e) => {
-  if(!dragging) return; //Se não estiver arrastando, sai da função
+  //if(!dragging) return; //Se não estiver arrastando, sai da função
   const rect = canvas.getBoundingClientRect(); //Obtem o tamanho visivel do canvas na tela
   const scaleX = canvas.width / rect.width; //Calcula fator de escala horizontal entre tela e canvas real
   const scaleY = canvas.height / rect.height; //Calcula fator de escala vertical entre tela e canvas real
-  overlayX = ((e.clientX - rect.left) * scaleX) - dragOffsetX; //Atualiza a posição X do overlay
-  overlayY = ((e.clientY - rect.top) * scaleY) - dragOffsetY; //Atualiza a posição Y do overlay
-  overlayPercentX = overlayX / canvas.width; //Converte posição horizontal para porcentagem
-  overlayPercentY = overlayY / canvas.height; //Converte posição vertical para porcentagem
+  
+  //Movimentando o texto
   if(draggingText){
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    //const rect = canvas.getBoundingClientRect();
+    //const scaleX = canvas.width / rect.width;
+    //const scaleY = canvas.height / rect.height;
     textX = ((e.clientX - rect.left) * scaleX) - textOffsetX;
     textY = ((e.clientY - rect.top) * scaleY) - textOffsetY;
-    return;
+    return; //Nõ move o overlay
+  }
+
+  //Movimentando o overlay
+  if(dragging){
+    //const rect = canvas.getBoundingClientRect();
+    overlayX = ((e.clientX - rect.left) * scaleX) - dragOffsetX; //Atualiza a posição X do overlay
+    overlayY = ((e.clientY - rect.top) * scaleY) - dragOffsetY; //Atualiza a posição Y do overlay
+    overlayPercentX = overlayX / canvas.width; //Converte posição horizontal para porcentagem
+    overlayPercentY = overlayY / canvas.height; //Converte posição vertical para porcentagem
   }
 });
 
@@ -241,6 +253,9 @@ canvas.addEventListener("mouseleave", () =>{
 // CARREGA FFMPEG APENAS UMA VEZ
 // =======================================
 let ffmpeg = new FFmpeg(); //Instancia principal do FFmpeg
+ffmpeg.on("log", ({message}) => {
+  console.log("FFMPEG: ", message);
+})
 let ffmpegLoaded = false; //Controle para saber se já carregou
 video.pause();
 overlayVideo.pause();
@@ -302,7 +317,6 @@ async function exportVideo(){
     audio.onloadedmetadata = resolve;
   });
   const audioDuration = Math.floor(audio.duration); //Duração total do MP3 em segundos
-  const last20seconds = audioDuration - 20; //Momento em que o overlay deve aparecer
   console.log("Duração MP3: ", audioDuration);
 
   //ARQUIVO MP3 - Envia o MP3 para a memória do FFmpeg
@@ -378,8 +392,34 @@ async function exportVideo(){
     videoChain += `,scale=${outputResolution.value}`;
   }
 
+  // Escapa caracteres especiais para não quebrar o FFmpeg
+  const safeText = customText.value
+  .replace(/'/g, "\\'") // Escapa aspas simples
+  .replace(/:/g, "\\:"); // Escapa dois pontos
+
   // Filtro principal
-  const filterComplex = `
+  const filterComplex =
+
+    // Remove chromakey do overlay
+    `[1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
+
+    // Junta vídeo principal + overlay
+    `[0:v][ov]${videoChain}[tmp];` +
+
+    // Adiciona texto sobre o vídeo já montado
+    `[tmp]drawtext=` +
+    `text='${safeText}':` +
+    `fontsize=${fontSize.value}:` +
+    `fontcolor=${textColor.value.replace("#","0x")}:` +
+    `borderw=4:` +
+    `bordercolor=${strokeColor.value.replace("#","0x")}:` +
+    `x=${Math.floor(textX)}:` +
+    `y=${Math.floor(textY)}[v];` +
+
+    // Mistura os áudios
+    `[2:a][1:a]amix=inputs=2:duration=first[aout]`;
+
+  /*const filterComplex = `
     [1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
     `[0:v][ov]${videoChain}[v];` +
     `[2:a][1:a]amix=inputs=2:duration=first[aout];
@@ -389,7 +429,7 @@ async function exportVideo(){
     fontsize=${fontSize.value}:
     x=${Math.floor(textX)}:
     y=${Math.floor(textY)}`
-  ;
+  ;*/
 
   //Ativa a barra de progresso novamente após gerar o loop
   showProgress = true;
@@ -470,7 +510,12 @@ async function exportVideo(){
       console.log("Download cancelado.");
       return;
     }
-    console.error("ERRO FFMPEG: ", error);
+    console.error(error);
+    try{
+      const log = ffmpeg.on("log", ({message}) => {
+        console.log(message);
+      });
+    }catch{}
   }
 
   //console.log("Tentando ler saida .MP4");
