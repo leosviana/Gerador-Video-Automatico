@@ -149,7 +149,16 @@ let overlayPercentY = 0; //Posição relativa (0 e 1). Será usada na exportaç�
 let overlayWidth = 0; //Tamanho atual do overlay
 let overlayHeight = 0; //Tamanho atual do overlay
 overlayInput.addEventListener("input", () => {
-  overlayScale = parseFloat(overlayInput.value);
+  overlayScale = parseFloat(overlayInput.value); //Atualiza a escala selecionada no slider
+  //Guarda o centro atual do overlay:
+  const centerX = overlayX + overlayWidth / 2;
+  const centerY = overlayY + overlayHeight / 2;
+  //Recalcula o tamanho do overlay:
+  overlayWidth = overlayVideo.videoWidth * overlayScale;
+  overlayHeight = overlayVideo.videoHeight * overlayScale;
+  //Mantem o overlay centralizado no mesmo ponto:
+  overlayX = centerX - overlayWidth / 2;
+  overlayY = centerY - overlayHeight / 2;
 });
 
 //Arrastar overlay com o mouse
@@ -345,15 +354,7 @@ async function exportVideo(){
   progressFill.style.width = "0%";
   progressText.textContent = "0%";
 
-console.log({
-  overlayX,
-  overlayY,
-  overlayWidth,
-  overlayHeight,
-  exportX,
-  exportY,
-  scale
-});
+//console.log({overlayX, overlayY, overlayWidth, overlayHeight, exportX, exportY, scale});
 
   //FFMPEG - COMANDOS PARA PROCESSAR OS ARQUIVOS:
   try{
