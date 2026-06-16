@@ -5,12 +5,12 @@
     <link rel="icon" type="image/svg+xml" href="/Gerador-Video-Automatico/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>gerador-video-automatico</title>
-    <script type="module" crossorigin src="/Gerador-Video-Automatico/assets/index-5RTv4ZIO.js"></script>
+    <script type="module" crossorigin src="/Gerador-Video-Automatico/assets/index-CbT5Vlkk.js"></script>
     <link rel="stylesheet" crossorigin href="/Gerador-Video-Automatico/assets/index-DDHZal_k.css">
   </head>
   <body>
     <div class="container">
-        <h3>Gerador De Vídeo Automático - V5.4</h3>  
+        <h3>Gerador De Vídeo Automático - V5.7</h3>  
         <div class="upload-area">            
             <label>Arquivo MP3:</label><br>
             <input type="file" id="audioInput" accept=".mp3"><br>
@@ -28,6 +28,23 @@
             <!-- max = 4 é o maior valor permitido (4 vezes o tamanho original) -->
             <!-- step = 0.1 define de quanto em quanto o valor pode variar (0.1 significa: 0.5, 0.6, 0.7...) -->
             <!-- value = 0.25 é o valor inicial quando abre a página -->
+            <hr>
+            <label>Texto:</label>
+            <input type="text" id="customText" value="@nome_canal">
+            <label>Fonte:</label>
+            <select id="fontFamily">
+                <option value="Arial">Arial</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Tahoma">Tahoma</option>
+                <option value="Impact">Impact</option>
+                <option value="Georgia">Georgia</option>
+            </select>
+            <label>Tamanho:</label>
+            <input type="range" id="fontSize" min="20" max="150" step="2" value="60">
+            <label>Cor do texto:</label>
+            <input type="color" id="textColor" value="#ffffff">
+            <label>Cor da borda:</label>
+            <input type="color" id="strokeColor" value="#000000">
         </div>
         <div class="preview-wrapper">
             <div class="preview-container">
