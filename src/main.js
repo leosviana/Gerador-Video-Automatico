@@ -288,19 +288,50 @@ ffmpeg.on("progress", ({progress}) => {
 });
 
 //CRIA IMAGEM PNG DO TEXTO
+//CRIA IMAGEM PNG DO TEXTO
 function createTextOverlayImage(){
-  const textCanvas = document.createElement("canvas"); //Cria um canvas transparente
-  textCanvas.width = canvas.width; //Mesmo tamanho do video
-  textCanvas.height = canvas.height; //Mesmo tamanho do video
-  const textCtx = textCanvas.getContext("2d"); 
-  textCtx.font = `${fontSize.value}px ${fontFamily.value}`; //Fonte escolhida pelo usuário
-  textCtx.lineWidth = parseInt(strokeWidth.value); //Espessura da borda
-  textCtx.fillStyle = textColor.value; //Cor do texto
-  textCtx.strokeText(customText.value, textX, textY); //Desenha texto
-  return textCanvas.toDataURL("image/png"); //Retorna PNG em Base64
 
+  //Cria canvas temporário transparente
+  const textCanvas = document.createElement("canvas");
 
-  //
+  //Mesmo tamanho do vídeo
+  textCanvas.width = canvas.width;
+  textCanvas.height = canvas.height;
+
+  //Contexto do canvas
+  const textCtx = textCanvas.getContext("2d");
+
+  //Fonte escolhida pelo usuário
+  textCtx.font = `${fontSize.value}px ${fontFamily.value}`;
+
+  //Melhora o acabamento dos cantos da borda
+  textCtx.lineJoin = "round";
+
+  //Espessura da borda
+  textCtx.lineWidth = parseInt(strokeWidth.value);
+
+  //Cor da borda
+  textCtx.strokeStyle = strokeColor.value;
+
+  //Cor do texto
+  textCtx.fillStyle = textColor.value;
+
+  //Desenha primeiro a borda
+  textCtx.strokeText(
+    customText.value,
+    textX,
+    textY
+  );
+
+  //Desenha o preenchimento por cima
+  textCtx.fillText(
+    customText.value,
+    textX,
+    textY
+  );
+
+  //Retorna PNG transparente
+  return textCanvas.toDataURL("image/png");
 }
 
 // =======================================
@@ -417,37 +448,16 @@ async function exportVideo(){
     videoChain += `,scale=${outputResolution.value}`;
   }
 
-  // Escapa caracteres especiais para não quebrar o FFmpeg
-  const safeText = customText.value
-  .replace(/'/g, "\\'") // Escapa aspas simples
-  .replace(/:/g, "\\:"); // Escapa dois pontos
-
   // Filtro principal
   const filterComplex =
-
     // Remove chromakey do overlay
     `[1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
-
     // Junta vídeo principal + overlay
     `[0:v][ov]${videoChain}[v1];` +
-
     // Adiciona texto sobre o vídeo já montado
     `[v1][3:v]overlay=0:0[v];` +
-
     // Mistura os áudios
     `[2:a][1:a]amix=inputs=2:duration=first[aout]`;
-
-  /*const filterComplex = `
-    [1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
-    `[0:v][ov]${videoChain}[v];` +
-    `[2:a][1:a]amix=inputs=2:duration=first[aout];
-    drawtext=
-    text='${customText.value}':
-    fontcolor=${textColor.value.replace("#","")}:
-    fontsize=${fontSize.value}:
-    x=${Math.floor(textX)}:
-    y=${Math.floor(textY)}`
-  ;*/
 
   //Ativa a barra de progresso novamente após gerar o loop
   showProgress = true;
