@@ -568,3 +568,10 @@ async function init(){
   drawPreview();
 }
 init();
+
+//TERMINAL - EXECUTAR PROJETO:
+//npm run dev
+//TERMINAL - COMPILAR NO GITHUB:
+//npm run build
+//TERMINAL - PUBLICAR NO GITHUB:
+//npm run deploy
