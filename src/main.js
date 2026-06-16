@@ -288,49 +288,51 @@ ffmpeg.on("progress", ({progress}) => {
 });
 
 //CRIA IMAGEM PNG DO TEXTO
-//CRIA IMAGEM PNG DO TEXTO
-function createTextOverlayImage(){
+function createTextOverlayImage(exportWidth, exportHeight){
 
-  //Cria canvas temporário transparente
+  // Cria canvas transparente na resolução FINAL do vídeo
   const textCanvas = document.createElement("canvas");
+  textCanvas.width = exportWidth;
+  textCanvas.height = exportHeight;
 
-  //Mesmo tamanho do vídeo
-  textCanvas.width = canvas.width;
-  textCanvas.height = canvas.height;
-
-  //Contexto do canvas
   const textCtx = textCanvas.getContext("2d");
 
-  //Fonte escolhida pelo usuário
-  textCtx.font = `${fontSize.value}px ${fontFamily.value}`;
+  // Calcula proporção entre preview e exportação
+  const scaleX = exportWidth / canvas.width;
+  const scaleY = exportHeight / canvas.height;
 
-  //Melhora o acabamento dos cantos da borda
-  textCtx.lineJoin = "round";
+  // Ajusta posição proporcionalmente
+  const exportTextX = textX * scaleX;
+  const exportTextY = textY * scaleY;
 
-  //Espessura da borda
-  textCtx.lineWidth = parseInt(strokeWidth.value);
+  // Ajusta tamanho da fonte proporcionalmente
+  const exportFontSize = parseInt(fontSize.value) * scaleY;
 
-  //Cor da borda
+  textCtx.font = `${exportFontSize}px ${fontFamily.value}`;
+
+  // Borda
+  textCtx.lineWidth =
+    parseInt(strokeWidth.value) * scaleY;
+
   textCtx.strokeStyle = strokeColor.value;
 
-  //Cor do texto
+  // Cor do texto
   textCtx.fillStyle = textColor.value;
 
-  //Desenha primeiro a borda
+  // Desenha borda
   textCtx.strokeText(
     customText.value,
-    textX,
-    textY
+    exportTextX,
+    exportTextY
   );
 
-  //Desenha o preenchimento por cima
+  // Desenha texto
   textCtx.fillText(
     customText.value,
-    textX,
-    textY
+    exportTextX,
+    exportTextY
   );
 
-  //Retorna PNG transparente
   return textCanvas.toDataURL("image/png");
 }
 
@@ -401,7 +403,14 @@ async function exportVideo(){
   console.log("Overlay enviado para o FFmpeg.");
 
   //CRIA PNG DO TEXTO
-  const textImageData = createTextOverlayImage(); //Gera imagem PNG do texto
+  let exportWidth = video.videoWidth;
+  let exportHeight = video.videoHeight;
+  if(outputResolution.value !== "original"){
+    const parts = outputResolution.value.split(":");
+    exportWidth = parseInt(parts[0]);
+    exportHeight = parseInt(parts[1]);
+  }
+  const textImageData = createTextOverlayImage(exportWidth, exportHeight); //Gera imagem PNG do texto
   const textBlob = await (await fetch(textImageData)).blob(); //Converte Base64 para Blob
   const textBuffer = await textBlob.arrayBuffer(); //Converte Blob para ArrayBuffer
   await ffmpeg.writeFile("text.png", new Uint8Array(textBuffer)); //Envia PNG para memória do FFmpeg
