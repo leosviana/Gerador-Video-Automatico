@@ -24,6 +24,11 @@ const fontFamily = document.getElementById("fontFamily");
 const fontSize = document.getElementById("fontSize");
 const textColor = document.getElementById("textColor");
 const strokeColor = document.getElementById("strokeColor");
+let textX = 100; //Posição X inicial
+let textY = 100; //Posição Y inicial
+let draggingText = false; //Controle de arrastar o mouse
+let textOffsetX = 0; //Posição X (vertical)
+let textOffsetY = 0; //Posição Y (horizontal)
 //BOTOES (EXPORTAR / CANCELAR)
 const outputResolution = document.getElementById("outputResolution");
 const btExportar = document.getElementById("btExportar");
@@ -170,7 +175,6 @@ overlayInput.addEventListener("input", () => {
 //Arrastar overlay com o mouse
 canvas.addEventListener("mousedown", (e) =>{
   const rect = canvas.getBoundingClientRect();
-
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
   const mouseX = (e.clientX - rect.left) * scaleX;
@@ -180,12 +184,28 @@ canvas.addEventListener("mousedown", (e) =>{
     mouseX <= overlayX + overlayWidth &&
     mouseY >= overlayY &&
     mouseY <= overlayY + overlayHeight
-){
-  dragging = true;
-  dragOffsetX = mouseX - overlayX;
-  dragOffsetY = mouseY - overlayY;
-  //console.log("Drag iniciado");
-}
+  ){
+    dragging = true;
+    dragOffsetX = mouseX - overlayX;
+    dragOffsetY = mouseY - overlayY;
+    //console.log("Drag iniciado");
+  }
+
+  //Arrastar o texto no canva
+  ctx.font = `${fontSize.value}px ${fontFamily.value}`;
+  const textWidth = ctx.measureText(customText.value).width;
+  const textHeight = parseInt(fontSize.value);
+  if(
+      mouseX >= textX &&
+      mouseX <= textX + textWidth &&
+      mouseY >= textY - textHeight &&
+      mouseY <= textY
+  ){
+      draggingText = true;
+      textOffsetX = mouseX - textX;
+      textOffsetY = mouseY - textY;
+      return;
+  }
 });
 //Movendo o mouse
 canvas.addEventListener("mousemove", (e) => {
@@ -197,14 +217,24 @@ canvas.addEventListener("mousemove", (e) => {
   overlayY = ((e.clientY - rect.top) * scaleY) - dragOffsetY; //Atualiza a posição Y do overlay
   overlayPercentX = overlayX / canvas.width; //Converte posição horizontal para porcentagem
   overlayPercentY = overlayY / canvas.height; //Converte posição vertical para porcentagem
+  if(draggingText){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    textX = ((e.clientX - rect.left) * scaleX) - textOffsetX;
+    textY = ((e.clientY - rect.top) * scaleY) - textOffsetY;
+    return;
+  }
 });
 
 canvas.addEventListener("mouseup", () => {
   dragging = false;
+  draggingText = false;
 });
 
 canvas.addEventListener("mouseleave", () =>{
   dragging = false;
+  draggingText = false;
 });
 
 // =======================================
@@ -352,7 +382,13 @@ async function exportVideo(){
   const filterComplex = `
     [1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
     `[0:v][ov]${videoChain}[v];` +
-    `[2:a][1:a]amix=inputs=2:duration=first[aout]`;
+    `[2:a][1:a]amix=inputs=2:duration=first[aout];
+    drawtext=
+    text='${customText.value}':
+    fontcolor=${textColor.value.replace("#","")}:
+    fontsize=${fontSize.value}:
+    x=${Math.floor(textX)}:
+    y=${Math.floor(textY)}`
   ;
 
   //Ativa a barra de progresso novamente após gerar o loop
@@ -489,6 +525,7 @@ async function exportVideo(){
   //overlayVideo.play(); //Quando terminar a exportacao pode iniciar o preview do overlay novamente
 }
 
+//TELA DE PREVIEW
 function drawPreview(){
   requestAnimationFrame(drawPreview);
   if(exporting){
@@ -512,7 +549,7 @@ function drawPreview(){
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  //Chroma key no canvas
+  //DESENHAR OVERLAY COM CHROMAKEY NO CANVAS
   if(overlayVideo.readyState >= 2){
     overlayPercentX = overlayX / canvas.width; //Posição relativa horizontal sempre atualizada
     overlayPercentY = overlayY / canvas.height; //Posição relativa vertical sempre atualizada
@@ -541,6 +578,14 @@ function drawPreview(){
     chromaCtx.putImageData(frame,0,0);
     ctx.drawImage(chromaCanvas, overlayX, overlayY, overlayWidth, overlayHeight);
   }
+
+  //DESENHAR TEXTO PERSONALIZADO NO CANVA
+  ctx.font = `${fontSize.value}px ${fontFamily.value}`;
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = strokeColor.value;
+  ctx.fillStyle = textColor.value;
+  ctx.strokeText(customText.value, textX, textY);
+  ctx.fillText(customText.value, textX, textY);
 }
 
 //console.log(overlayVideo.videoWidth, overlayVideo.videoHeight);
