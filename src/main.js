@@ -23,6 +23,7 @@ const customText = document.getElementById("customText");
 const fontFamily = document.getElementById("fontFamily");
 const fontSize = document.getElementById("fontSize");
 const textColor = document.getElementById("textColor");
+const strokeWidth = document.getElementById("strokeWidth");
 const strokeColor = document.getElementById("strokeColor");
 let textX = 100; //Posição X inicial
 let textY = 100; //Posição Y inicial
@@ -253,9 +254,9 @@ canvas.addEventListener("mouseleave", () =>{
 // CARREGA FFMPEG APENAS UMA VEZ
 // =======================================
 let ffmpeg = new FFmpeg(); //Instancia principal do FFmpeg
-ffmpeg.on("log", ({message}) => {
+/*ffmpeg.on("log", ({message}) => {
   console.log("FFMPEG: ", message);
-})
+})*/
 let ffmpegLoaded = false; //Controle para saber se já carregou
 video.pause();
 overlayVideo.pause();
@@ -285,6 +286,22 @@ ffmpeg.on("progress", ({progress}) => {
   progressFill.style.width = percent + "%";
   progressText.textContent = percent + "%";
 });
+
+//CRIA IMAGEM PNG DO TEXTO
+function createTextOverlayImage(){
+  const textCanvas = document.createElement("canvas"); //Cria um canvas transparente
+  textCanvas.width = canvas.width; //Mesmo tamanho do video
+  textCanvas.height = canvas.height; //Mesmo tamanho do video
+  const textCtx = textCanvas.getContext("2d"); 
+  textCtx.font = `${fontSize.value}px ${fontFamily.value}`; //Fonte escolhida pelo usuário
+  textCtx.lineWidth = parseInt(strokeWidth.value); //Espessura da borda
+  textCtx.fillStyle = textColor.value; //Cor do texto
+  textCtx.strokeText(customText.value, textX, textY); //Desenha texto
+  return textCanvas.toDataURL("image/png"); //Retorna PNG em Base64
+
+
+  //
+}
 
 // =======================================
 // EXPORTAÇÃO MP3 + MP4
@@ -351,6 +368,14 @@ async function exportVideo(){
   const overlayUint8 = new Uint8Array(overlayBuffer); //Converte o arquivo para ArrayBuffer
   await ffmpeg.writeFile("overlay.mp4", overlayUint8); //Envia overlay para memória do FFmpeg
   console.log("Overlay enviado para o FFmpeg.");
+
+  //CRIA PNG DO TEXTO
+  const textImageData = createTextOverlayImage(); //Gera imagem PNG do texto
+  const textBlob = await (await fetch(textImageData)).blob(); //Converte Base64 para Blob
+  const textBuffer = await textBlob.arrayBuffer(); //Converte Blob para ArrayBuffer
+  await ffmpeg.writeFile("text.png", new Uint8Array(textBuffer)); //Envia PNG para memória do FFmpeg
+  console.log("Text PNG enviado para FFmpeg");
+
   const scale = parseFloat(overlayInput.value);
   const videoWidth = video.videoWidth;
   const videoHeight = video.videoHeight;
@@ -404,17 +429,10 @@ async function exportVideo(){
     `[1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
 
     // Junta vídeo principal + overlay
-    `[0:v][ov]${videoChain}[tmp];` +
+    `[0:v][ov]${videoChain}[v1];` +
 
     // Adiciona texto sobre o vídeo já montado
-    `[tmp]drawtext=` +
-    `text='${safeText}':` +
-    `fontsize=${fontSize.value}:` +
-    `fontcolor=${textColor.value.replace("#","0x")}:` +
-    `borderw=4:` +
-    `bordercolor=${strokeColor.value.replace("#","0x")}:` +
-    `x=${Math.floor(textX)}:` +
-    `y=${Math.floor(textY)}[v];` +
+    `[v1][3:v]overlay=0:0[v];` +
 
     // Mistura os áudios
     `[2:a][1:a]amix=inputs=2:duration=first[aout]`;
@@ -445,6 +463,7 @@ async function exportVideo(){
         "-i", sourceVideo,         //Identifica o arquivo de video principal
         "-i", "overlay.mp4",       //Identifica o arquivo de video overlay
         "-i", "audio.mp3",         //Identifica o arquivo de audio
+        "-i", "text.png",          //Identifica o arquivo de PNG do texto
         "-filter_complex", filterComplex, //Sobrepoe o video principal + overlay
                                    //1 = overlay | 0 = video principal
                                    //Primeiro está retirando o chroma key, redimencionando o overlay, depois posiciona no centro
@@ -626,7 +645,7 @@ function drawPreview(){
 
   //DESENHAR TEXTO PERSONALIZADO NO CANVA
   ctx.font = `${fontSize.value}px ${fontFamily.value}`;
-  ctx.lineWidth = 6;
+  ctx.lineWidth = parseInt(strokeWidth.value);
   ctx.strokeStyle = strokeColor.value;
   ctx.fillStyle = textColor.value;
   ctx.strokeText(customText.value, textX, textY);
