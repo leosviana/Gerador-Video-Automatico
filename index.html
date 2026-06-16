@@ -26,6 +26,23 @@
             <!-- max = 4 é o maior valor permitido (4 vezes o tamanho original) -->
             <!-- step = 0.1 define de quanto em quanto o valor pode variar (0.1 significa: 0.5, 0.6, 0.7...) -->
             <!-- value = 0.25 é o valor inicial quando abre a página -->
+            <hr>
+            <label>Texto:</label>
+            <input type="text" id="customText" value="@nome_canal">
+            <label>Fonte:</label>
+            <select>
+                <option value="Arial">Arial</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Tahoma">Tahoma</option>
+                <option value="Impact">Impact</option>
+                <option value="Georgia">Georgia</option>
+            </select>
+            <label>Tamanho:</label>
+            <input type="range" id="fontSize" min="20" max="150" step="2" value="60">
+            <label>Cor do texto:</label>
+            <input type="color" id="textColor" value="#ffffff">
+            <label>Cor da borda:</label>
+            <input type="color" id="strokeColor" value="#000000">
         </div>
         <div class="preview-wrapper">
             <div class="preview-container">

@@ -18,6 +18,12 @@ let dragOffsetY = 0; //Posição Y (horizontal)
 const videoResolution = document.getElementById("videoResolution");
 //CHROMAKEY - CANVA DE VIDEO OVERLAY(INSCREVA-SE):
 const overlayInput = document.getElementById("overlayScale"); //Escala inicial do overlay
+//TEXTO PERSONALIZADO
+const customText = document.getElementById("customText");
+const fontFamily = document.getElementById("fontFamily");
+const fontSize = document.getElementById("fontSize");
+const textColor = document.getElementById("textColor");
+const strokeColor = document.getElementById("strokeColor");
 //BOTOES (EXPORTAR / CANCELAR)
 const outputResolution = document.getElementById("outputResolution");
 const btExportar = document.getElementById("btExportar");
