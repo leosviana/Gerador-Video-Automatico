@@ -77,10 +77,12 @@ videoInput.addEventListener("change", (event) => {
     const height = video.videoHeight;
     canvas.width = video.videoWidth; //Define resolucao de largura do canvas
     canvas.height = video.videoHeight; //Define resolucao de altura do canvas
+    overlayWidth = overlayVideo.videoWidth * overlayScale;
+    overlayHeight = overlayVideo.videoHeight * overlayScale;
     overlayX = (canvas.width - overlayWidth) / 2; //Centraliza o overlay em largura no preview
     overlayY = (canvas.height - overlayHeight) / 2; //Centraliza o overlay em altura no preview
-    previewContainer.style.width = video.videoWith + "px";
-    previewContainer.style.height = video.videoHeight + "px";
+    //previewContainer.style.width = video.videoWidth + "px";
+    //previewContainer.style.height = video.videoHeight + "px";
     let label = `${width}x${height}`;
     if(height <= 240){
       label += " (240p)";
@@ -505,8 +507,6 @@ function drawPreview(){
 
   //Chroma key no canvas
   if(overlayVideo.readyState >= 2){
-    overlayWidth = overlayVideo.videoWidth * overlayScale; //Calcula o overlay em largura de acordo com o slider
-    overlayHeight = overlayVideo.videoHeight * overlayScale; //Calcula o overlay em altura de acordo com o slider
     overlayPercentX = overlayX / canvas.width; //Posição relativa horizontal sempre atualizada
     overlayPercentY = overlayY / canvas.height; //Posição relativa vertical sempre atualizada
     if( //Faz o canva interno ser exatamente o mesmo tamanho do overlay
@@ -532,15 +532,11 @@ function drawPreview(){
       }
     }
     chromaCtx.putImageData(frame,0,0);
-    console.log("DRAW", overlayX, overlayY, overlayWidth, overlayHeight);
     ctx.drawImage(chromaCanvas, overlayX, overlayY, overlayWidth, overlayHeight);
   }
 }
 
-console.log(
-  overlayVideo.videoWidth,
-  overlayVideo.videoHeight
-);
+//console.log(overlayVideo.videoWidth, overlayVideo.videoHeight);
 
 //Função para cancelar download
 btCancelar.addEventListener("click", async () => {

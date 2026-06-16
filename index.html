@@ -27,9 +27,11 @@
             <!-- step = 0.1 define de quanto em quanto o valor pode variar (0.1 significa: 0.5, 0.6, 0.7...) -->
             <!-- value = 0.25 é o valor inicial quando abre a página -->
         </div>
-        <div class="preview-container">
-            <canvas id="previewCanvas"></canvas>
-            <video id="overlayVideo" muted autoplay loop playsinline style="display:none;"></video>
+        <div class="preview-wrapper">
+            <div class="preview-container">
+                <canvas id="previewCanvas"></canvas>
+                <video id="overlayVideo" muted autoplay loop playsinline style="display:none;"></video>
+            </div>
         </div>
         <div class="video-info">
             <span id="videoResolution">Resolução do vídeo: Nenhum vídeo carregado</span>
