@@ -16,11 +16,17 @@
             <input type="file" id="videoInput" accept=".mp4"><br>
             <label>Repetição:</label>
             <select id="loopMode">
-                <option value="loop">Loop</option>
+                <option value="loop" selected>Loop</option>
                 <option value="reverse">Reverso</option>
             </select>
+            <label>Inscreva-se:</label>
+            <select id="overlayLanguage">
+                <option value="pt" selected>Português</option>
+                <option value="es">Espanhol</option>
+                <option value="en">Inglês</option>
+            </select>
             <label>Tamanho Overlay: </label>
-            <input type="range" id="overlayScale" min="0.10" max="1" step="0.05" value="0.55">
+            <input type="range" id="overlayScale" min="0.10" max="1" step="0.05" value="0.80">
             <!-- range: Cria um controle deslizante (slider) para arrastar a bolinha para esquerda ou direita -->
             <!-- min = 0.10 é o menor valor permitido, nesse caso 0.10 = 10% do tamanho original / 1.0 = tamanho original / 2.0 = dobro do tamanho -->
             <!-- max = 4 é o maior valor permitido (4 vezes o tamanho original) -->
@@ -31,7 +37,7 @@
             <input type="text" id="customText" value="@nome_canal">
             <label>Fonte:</label>
             <select id="fontFamily">
-                <option value="Arial">Arial</option>
+                <option value="Arial" selected>Arial</option>
                 <option value="Verdana">Verdana</option>
                 <option value="Tahoma">Tahoma</option>
                 <option value="Impact">Impact</option>
@@ -58,7 +64,7 @@
         <div>
             <label>Resolução de saída:</label>
             <select id="outputResolution">
-                <option value="original">Original</option>
+                <option value="original" selected>Original</option>
                 <option value="1280:720">720p</option>
                 <option value="1920:1080">1080p</option>
                 <option value="2560:1440">1440p</option>

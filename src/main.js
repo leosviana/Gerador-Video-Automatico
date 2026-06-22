@@ -1,7 +1,9 @@
 //ARQUIVOS IMPORTADOS
 import "./style.css"; // Importa o CSS principal
 import {FFmpeg} from "@ffmpeg/ffmpeg"; //Importa o FFMPEG
-import overlayFile from "./assets/se-inscreva-youtube.mp4";
+import overlayPt from "./assets/se-inscreva-youtube.mp4";
+import overlayEs from "./assets/se-inscreva-youtube-esp.mp4";
+import overlayEn from "./assets/se-inscreva-youtube-eng.mp4";
 //ARQUIVOS UTILIZADOS NO PROJETO(MP3 E MP4):
 const videoInput = document.getElementById("videoInput"); //Campo de upload do video principal
 const audioInput = document.getElementById("audioInput"); //Campo de upload do audio
@@ -18,6 +20,7 @@ let dragOffsetY = 0; //Posição Y (horizontal)
 const videoResolution = document.getElementById("videoResolution");
 //CHROMAKEY - CANVA DE VIDEO OVERLAY(INSCREVA-SE):
 const overlayInput = document.getElementById("overlayScale"); //Escala inicial do overlay
+const overlayLanguage = document.getElementById("overlayLanguage");
 //TEXTO PERSONALIZADO
 const customText = document.getElementById("customText");
 const fontFamily = document.getElementById("fontFamily");
@@ -139,14 +142,36 @@ let reverseDirection = 1;
 // =======================================
 // OVERLAY (SE INSCREVA)
 // =======================================
-const overlayPath = overlayFile; //Caminho do overlay
+function getOverlayFile(){
+  //Português
+  if(overlayLanguage.value === "pt"){
+    return overlayPt;
+  }
+  //Espanhol
+  if(overlayLanguage.value === "es"){
+    return overlayEs;
+  }
+  //Inglês
+  if(overlayLanguage.value === "en"){
+    return overlayEn;
+  }
+  //Segurança
+  return overlayPt;
+}
+
 const overlayVideo = document.getElementById("overlayVideo");
-overlayVideo.src = overlayPath;
+overlayVideo.src = overlayPt;
 overlayVideo.loop = true; //Repetir continuamente
 overlayVideo.muted = true; //Sem audio
 overlayVideo.volume = 0;
 overlayVideo.playsInline = true; //Necessario para autoplay em alguns navegadores
-const chromaCanvas = document.createElement("canvas");
+overlayLanguage.addEventListener("change", () => {
+  overlayVideo.src = getOverlayFile(); //Atualiza o vídeo exibido no preview 
+  overlayVideo.load(); //Reinicia o vídeo
+  overlayVideo.play(); //Reproduz automaticamente
+})
+
+const chromaCanvas = document.createElement("canvas"); //Criando o canvas pra exibir o vídeo do overlay com o chroma key
 const chromaCtx = chromaCanvas.getContext("2d",{willReadFrequently: true}); //Cria um contexto otimizado para operações frequentes
 overlayVideo.addEventListener("loadeddata", () => {
   overlayVideo.play();
@@ -210,7 +235,6 @@ canvas.addEventListener("mousedown", (e) =>{
     draggingText = false; //Impede de mover o texto junto
     //console.log("Drag iniciado");
   }
-
 
 });
 //Movendo o mouse
@@ -394,7 +418,8 @@ async function exportVideo(){
   }
   
   //ARQUIVO OVERLAY - Envia o arquivo inscreva-se para a memória do FFmpeg
-  const overlayResponse = await fetch(overlayPath); //Carrega arquivo overlay da pasta raiz
+  const selectedOverlay = getOverlayFile(); //obtem o arquio do overlay selecionado
+  const overlayResponse = await fetch(selectedOverlay); //Carrega o overlay escolhido
   //console.log("Status overlay: ", overlayResponse.status);
   const overlayBuffer = await overlayResponse.arrayBuffer(); //Converte o arquivo para ArrayBuffer
   //console.log("Overlay carregado: ", overlayBuffer.byteLength);
