@@ -33,6 +33,26 @@ let textY = 100; //Posição Y inicial
 let draggingText = false; //Controle de arrastar o mouse
 let textOffsetX = 0; //Posição X (vertical)
 let textOffsetY = 0; //Posição Y (horizontal)
+//CONTROLE DE VÍDEO
+const videoSpeed = document.getElementById("videoSpeed");
+const videoSpeedLabel = document.getElementById("videoSpeedLabel");
+let playbackSpeed = 1;
+videoSpeed.addEventListener("input", () => {
+    const value = Number(videoSpeed.value);
+    if(value >= 0){
+        // Centro até direita
+        // 0 -> 1.0x
+        // 200 -> 3.0x
+        playbackSpeed = 1 + (value / 100);
+    }else{
+        // Centro até esquerda
+        // -75 -> 0.25x
+        playbackSpeed = 1 + (value / 100);
+    }
+    videoSpeedLabel.textContent =
+        playbackSpeed.toFixed(2) + "x";
+    video.playbackRate = playbackSpeed;
+});
 //BOTOES (EXPORTAR / CANCELAR)
 const outputResolution = document.getElementById("outputResolution");
 const btExportar = document.getElementById("btExportar");
@@ -44,7 +64,6 @@ const progressFill = document.getElementById("progressFill");
 const progressText = document.getElementById("progressText");
 const progressContainer = document.querySelector(".progress-container");
 let showProgress = false; //Barra não será carregada antes de gerar o loop
-
 //CONTROLE DE EXIBIÇÃO DOS BOTOES
 function updateButtons(){
   btExportar.disabled = !(audioFile && videoFile); //Botão exportar só habilita quando tiver MP3 e MP4 selecionado
@@ -278,9 +297,9 @@ canvas.addEventListener("mouseleave", () =>{
 // CARREGA FFMPEG APENAS UMA VEZ
 // =======================================
 let ffmpeg = new FFmpeg(); //Instancia principal do FFmpeg
-/*ffmpeg.on("log", ({message}) => {
+ffmpeg.on("log", ({message}) => {
   console.log("FFMPEG: ", message);
-})*/
+})
 let ffmpegLoaded = false; //Controle para saber se já carregou
 video.pause();
 overlayVideo.pause();
@@ -442,6 +461,7 @@ async function exportVideo(){
   console.log("Text PNG enviado para FFmpeg");
 
   const scale = parseFloat(overlayInput.value);
+  const speed = playbackSpeed;
   const videoWidth = video.videoWidth;
   const videoHeight = video.videoHeight;
   //Calcula o centro do overlay no preview:
@@ -476,22 +496,40 @@ async function exportVideo(){
     console.log("Vídeo PingPong criado.");
     console.log(`Tempo total: ${formatElapsedTime(startTime)}`);
   }
+
   //Resolução saída
   let videoChain = `overlay=${exportX}:${exportY}`;
   if(outputResolution.value !== "original"){
     videoChain += `,scale=${outputResolution.value}`;
   }
 
+  //=======================================
+  // CONTROLE DE VELOCIDADE
+  //=======================================
+  let videoFilter = "";
+  if(speed !== 1){
+      videoFilter = `[0:v]setpts=${1/speed}*PTS[v0];`;
+  }else{
+      videoFilter = `[0:v]null[v0];`;
+  }
+
+const filterComplex =
+    videoFilter +
+    `[1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
+    `[v0][ov]${videoChain}[v1];` +
+    `[v1][3:v]overlay=0:0[v];` +
+    `[2:a][1:a]amix=inputs=2:duration=first[aout]`;
+
   // Filtro principal
-  const filterComplex =
-    // Remove chromakey do overlay
+  /*const filterComplex =
+    // Remove chromakey
     `[1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
     // Junta vídeo principal + overlay
     `[0:v][ov]${videoChain}[v1];` +
-    // Adiciona texto sobre o vídeo já montado
+    // Marca d'água
     `[v1][3:v]overlay=0:0[v];` +
-    // Mistura os áudios
-    `[2:a][1:a]amix=inputs=2:duration=first[aout]`;
+    // Áudio
+    `[2:a][1:a]amix=inputs=2:duration=first[aout]`;*/
 
   //Ativa a barra de progresso novamente após gerar o loop
   showProgress = true;
@@ -503,7 +541,7 @@ async function exportVideo(){
   //FFMPEG - COMANDOS PARA PROCESSAR OS ARQUIVOS:
   try{
     await ffmpeg.exec([
-        "-stream_loop", "-1",      //Faz o video repetir infinitamente
+        "-stream_loop", "999",      //Faz o video repetir infinitamente
         "-i", sourceVideo,         //Identifica o arquivo de video principal
         "-i", "overlay.mp4",       //Identifica o arquivo de video overlay
         "-i", "audio.mp3",         //Identifica o arquivo de audio
@@ -523,7 +561,7 @@ async function exportVideo(){
         "-preset", "ultrafast",     //Compressão do arquivo: ultrafast, superfast, veryfast, faster, fast, medium (padrão)...
         "-crf", "23",              //Qualidade do video
         "-c:a", "aac",             //Converte audio em AAC
-        "-t", `${audioDuration}`,  //Termina exatamente ao tamanho do MP3
+        "-t", audioDuration.toString(),  //Termina exatamente ao tamanho do MP3
         "saida.mp4"                //Arquivo gerado
     ]);
     /*
