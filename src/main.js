@@ -21,6 +21,7 @@ const videoResolution = document.getElementById("videoResolution");
 //CHROMAKEY - CANVA DE VIDEO OVERLAY(INSCREVA-SE):
 const overlayInput = document.getElementById("overlayScale"); //Escala inicial do overlay
 const overlayLanguage = document.getElementById("overlayLanguage");
+const enableOverlay = document.getElementById("enableOverlay");
 //TEXTO PERSONALIZADO
 const customText = document.getElementById("customText");
 const fontFamily = document.getElementById("fontFamily");
@@ -189,7 +190,28 @@ overlayLanguage.addEventListener("change", () => {
   overlayVideo.load(); //Reinicia o vídeo
   overlayVideo.play(); //Reproduz automaticamente
 })
-
+//=======================================
+// ATIVAR / DESATIVAR OVERLAY
+//=======================================
+//Função responsável por habilitar ou desabilitar
+//todos os controles da seção Overlay
+function updateOverlayControls(){
+    //Verifica se a checkbox está marcada
+    const enabled = enableOverlay.checked;
+    //Habilita ou desabilita
+    //o campo de idioma
+    overlayLanguage.disabled = !enabled;
+    //Habilita ou desabilita
+    //o slider de escala
+    overlayInput.disabled = !enabled;
+  }
+  //Sempre que clicar na checkbox
+  enableOverlay.addEventListener(
+      "change",
+      updateOverlayControls
+  );
+  //Executa uma vez quando o projeto inicia
+  updateOverlayControls();
 const chromaCanvas = document.createElement("canvas"); //Criando o canvas pra exibir o vídeo do overlay com o chroma key
 const chromaCtx = chromaCanvas.getContext("2d",{willReadFrequently: true}); //Cria um contexto otimizado para operações frequentes
 overlayVideo.addEventListener("loadeddata", () => {
