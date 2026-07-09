@@ -185,17 +185,30 @@ overlayVideo.loop = true; //Repetir continuamente
 overlayVideo.muted = true; //Sem audio
 overlayVideo.volume = 0;
 overlayVideo.playsInline = true; //Necessario para autoplay em alguns navegadores
+
 overlayLanguage.addEventListener("change", () => {
+    //Troca o vídeo conforme o idioma
+    overlayVideo.src = getOverlayFile();
+    //Recarrega o vídeo
+    overlayVideo.load();
+    //Só reproduz se estiver habilitado
+    if(enableOverlay.checked){
+        overlayVideo.play();
+    }
+});
+/*overlayLanguage.addEventListener("change", () => {
   overlayVideo.src = getOverlayFile(); //Atualiza o vídeo exibido no preview 
   overlayVideo.load(); //Reinicia o vídeo
   overlayVideo.play(); //Reproduz automaticamente
-})
+})*/
+
+
 //=======================================
 // ATIVAR / DESATIVAR OVERLAY
 //=======================================
 //Função responsável por habilitar ou desabilitar
 //todos os controles da seção Overlay
-function updateOverlayControls(){
+/*function updateOverlayControls(){
     //Verifica se a checkbox está marcada
     const enabled = enableOverlay.checked;
     //Habilita ou desabilita
@@ -204,7 +217,34 @@ function updateOverlayControls(){
     //Habilita ou desabilita
     //o slider de escala
     overlayInput.disabled = !enabled;
-  }
+  }*/
+
+//=======================================
+// ATIVAR / DESATIVAR OVERLAY
+//=======================================
+function updateOverlayControls(){
+    //Verifica se a checkbox está marcada
+    const enabled = enableOverlay.checked;
+    //Habilita ou desabilita idioma
+    overlayLanguage.disabled = !enabled;
+    //Habilita ou desabilita escala
+    overlayInput.disabled = !enabled;
+    //------------------------------------
+    // CONTROLE DO VÍDEO DO OVERLAY
+    //------------------------------------
+    //Se estiver ativado...
+    if(enabled){      
+      overlayVideo.currentTime = 0; // Reinicia o vídeo
+      overlayVideo.play().catch(() => {}); // Reproduz sem gerar erro caso o navegador interrompa a execução
+    }
+    else{
+        //Pausa totalmente o vídeo
+        overlayVideo.pause();
+        //Volta para o primeiro frame
+        overlayVideo.currentTime = 0;
+    }
+}
+
   //Sempre que clicar na checkbox
   enableOverlay.addEventListener(
       "change",
@@ -214,9 +254,18 @@ function updateOverlayControls(){
   updateOverlayControls();
 const chromaCanvas = document.createElement("canvas"); //Criando o canvas pra exibir o vídeo do overlay com o chroma key
 const chromaCtx = chromaCanvas.getContext("2d",{willReadFrequently: true}); //Cria um contexto otimizado para operações frequentes
+
 overlayVideo.addEventListener("loadeddata", () => {
-  overlayVideo.play();
+    //Só inicia automaticamente
+    //caso o overlay esteja ativado
+    if(enableOverlay.checked){
+        overlayVideo.play();
+    }
 });
+
+/*overlayVideo.addEventListener("loadeddata", () => {
+  overlayVideo.play();
+});*/
 
 //Posição do overlay
 let overlayScale = parseFloat(overlayInput.value); //Escala overlay (slider)
@@ -265,6 +314,7 @@ canvas.addEventListener("mousedown", (e) =>{
 
   //Arrastar o overlay no canva 
   if( //Verifica se clicou dentro do overlay
+    enableOverlay.checked && //Se checkbox de overlay estiver marcada
     mouseX >= overlayX &&
     mouseX <= overlayX + overlayWidth &&
     mouseY >= overlayY &&
@@ -296,7 +346,7 @@ canvas.addEventListener("mousemove", (e) => {
   }
 
   //Movimentando o overlay
-  if(dragging){
+  if(enableOverlay.checked && dragging){ //Só permite movimentar o overlay se o checkbox do overlay estiver marcado
     //const rect = canvas.getBoundingClientRect();
     overlayX = ((e.clientX - rect.left) * scaleX) - dragOffsetX; //Atualiza a posição X do overlay
     overlayY = ((e.clientY - rect.top) * scaleY) - dragOffsetY; //Atualiza a posição Y do overlay
@@ -323,8 +373,8 @@ ffmpeg.on("log", ({message}) => {
   console.log("FFMPEG: ", message);
 })
 let ffmpegLoaded = false; //Controle para saber se já carregou
-video.pause();
-overlayVideo.pause();
+//video.pause();
+//overlayVideo.pause();
 async function loadFFmpeg(){ 
   if(ffmpegLoaded) return; //Se já carregou anteriormente...
   //console.log("Carregando FFmpeg...");
@@ -457,7 +507,7 @@ async function exportVideo(){
   }catch(error){
     console.log("Erro ao ler vídeo: ", error);
   }
-  
+  /*
   //ARQUIVO OVERLAY - Envia o arquivo inscreva-se para a memória do FFmpeg
   const selectedOverlay = getOverlayFile(); //obtem o arquio do overlay selecionado
   const overlayResponse = await fetch(selectedOverlay); //Carrega o overlay escolhido
@@ -466,7 +516,34 @@ async function exportVideo(){
   //console.log("Overlay carregado: ", overlayBuffer.byteLength);
   const overlayUint8 = new Uint8Array(overlayBuffer); //Converte o arquivo para ArrayBuffer
   await ffmpeg.writeFile("overlay.mp4", overlayUint8); //Envia overlay para memória do FFmpeg
-  console.log("Overlay enviado para o FFmpeg.");
+  console.log("Overlay enviado para o FFmpeg.");*/
+
+  //=======================================
+  // CARREGA O OVERLAY SOMENTE SE NECESSÁRIO
+  //=======================================
+  //Verifica se o usuário deseja utilizar
+  //o botão "Inscreva-se"
+  if(enableOverlay.checked){
+      //Obtém o vídeo do idioma selecionado
+      const selectedOverlay = getOverlayFile();
+      //Carrega o arquivo MP4 do overlay
+      const overlayResponse =
+          await fetch(selectedOverlay);
+      //Converte o arquivo em ArrayBuffer
+      const overlayBuffer =
+          await overlayResponse.arrayBuffer();
+      //Converte para Uint8Array
+      const overlayUint8 =
+          new Uint8Array(overlayBuffer);
+      //Envia o arquivo para a memória do FFmpeg
+      await ffmpeg.writeFile(
+          "overlay.mp4",
+          overlayUint8
+      );
+      console.log(
+          "Overlay enviado para o FFmpeg."
+      );
+  }
 
   //CRIA PNG DO TEXTO
   let exportWidth = video.videoWidth;
@@ -482,7 +559,7 @@ async function exportVideo(){
   await ffmpeg.writeFile("text.png", new Uint8Array(textBuffer)); //Envia PNG para memória do FFmpeg
   console.log("Text PNG enviado para FFmpeg");
 
-  const scale = parseFloat(overlayInput.value);
+  /*const scale = parseFloat(overlayInput.value);
   const speed = playbackSpeed;
   const videoWidth = video.videoWidth;
   const videoHeight = video.videoHeight;
@@ -492,11 +569,45 @@ async function exportVideo(){
   const centerPercentX = centerX / canvas.width; //Converte o centro X para porcentagem
   const centerPercentY = centerY / canvas.height; //Converte o centro Y para porcentagem
   const exportX = Math.floor(overlayPercentX * videoWidth);
-  const exportY = Math.floor(overlayPercentY * videoHeight);
+  const exportY = Math.floor(overlayPercentY * videoHeight);*/
+
   //console.log("Video Width:", videoWidth);
   //console.log("Video Height:", videoHeight);
   //console.log("Export X: ", exportX); //Exibe coordenadas finais X
   //console.log("Export Y: ", exportY); //Exibe coordenadas finais Y
+
+  //---------------------------------------
+  // VELOCIDADE DO VÍDEO
+  //---------------------------------------
+  const speed = playbackSpeed;
+  //---------------------------------------
+  // Variáveis do Overlay
+  //---------------------------------------
+  let scale = 1;
+  let exportX = 0;
+  let exportY = 0;
+  //Só calcula essas informações
+  //caso o overlay esteja ativado
+  if(enableOverlay.checked){
+      //Escala do overlay
+      scale =
+          parseFloat(overlayInput.value);
+      //Resolução do vídeo
+      const videoWidth =
+          video.videoWidth;
+      const videoHeight =
+          video.videoHeight;
+      //Calcula posição X
+      exportX =
+          Math.floor(
+              overlayPercentX * videoWidth
+          );
+      //Calcula posição Y
+      exportY =
+          Math.floor(
+              overlayPercentY * videoHeight
+          );
+  }
 
   //LOOP REVERSO DO VIDEO PRINCIPAL
   const selectedLoop = loopMode.value;
@@ -520,9 +631,18 @@ async function exportVideo(){
   }
 
   //Resolução saída
-  let videoChain = `overlay=${exportX}:${exportY}`;
+  /*let videoChain = `overlay=${exportX}:${exportY}`;
   if(outputResolution.value !== "original"){
     videoChain += `,scale=${outputResolution.value}`;
+  }*/
+ 
+  //Resolução saída
+  let videoChain = ""; // Inicializa vazio
+  if(enableOverlay.checked){ // Só cria o filtro caso exista overlay
+      videoChain = `overlay=${exportX}:${exportY}`; // Posição do overlay
+      if(outputResolution.value !== "original"){ // Escala para resolução escolhida
+          videoChain += `,scale=${outputResolution.value}`;
+      }
   }
 
   //=======================================
@@ -535,22 +655,44 @@ async function exportVideo(){
       videoFilter = `[0:v]null[v0];`;
   }
 
+//=======================================
+// MONTA O FILTER COMPLEX DINAMICAMENTE
+//=======================================
+let ffmpegInputs = []; //Array que armazenará todos os parâmetros do FFmpeg
+let filterComplex = ""; //Variável que armazenará o filtro final
+if(enableOverlay.checked){ //Verifica se o overlay está ativado, se sim, então:
+    //-----------------------------------
+    // Ordem dos arquivos:
+    // 0 -> Vídeo principal
+    // 1 -> Overlay
+    // 2 -> MP3
+    // 3 -> Texto PNG
+    //-----------------------------------
+    filterComplex =
+        videoFilter +     
+        `[1:v]chromakey=0x00FF00:0.25:0.08,` + //Remove o chromakey do overlay        
+        `scale=iw*${scale}:ih*${scale}[ov];` + //Redimensiona conforme slider        
+        `[v0][ov]${videoChain}[v1];` + //Une vídeo principal + overlay        
+        `[v1][3:v]overlay=0:0[v];` + //Adiciona o texto PNG
+        `[2:a][1:a]amix=inputs=2:duration=first[aout]`; //Une áudio MP3 com áudio do overlay
+}else{ //Se overlay, não estiver ativo, então:
+    //-----------------------------------
+    // Ordem dos arquivos:
+    // 0 -> Vídeo principal
+    // 1 -> MP3
+    // 2 -> Texto PNG
+    //-----------------------------------
+    filterComplex =      
+      videoFilter + // Aplica velocidade no vídeo      
+      `[v0][2:v]overlay=0:0[v];` + // Adiciona o PNG sobre o vídeo
+      `[1:a]anull[aout]`; // Mantém apenas o áudio do MP3
+}
+/*
 const filterComplex =
     videoFilter +
     `[1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
     `[v0][ov]${videoChain}[v1];` +
     `[v1][3:v]overlay=0:0[v];` +
-    `[2:a][1:a]amix=inputs=2:duration=first[aout]`;
-
-  // Filtro principal
-  /*const filterComplex =
-    // Remove chromakey
-    `[1:v]chromakey=0x00FF00:0.25:0.08,scale=iw*${scale}:ih*${scale}[ov];` +
-    // Junta vídeo principal + overlay
-    `[0:v][ov]${videoChain}[v1];` +
-    // Marca d'água
-    `[v1][3:v]overlay=0:0[v];` +
-    // Áudio
     `[2:a][1:a]amix=inputs=2:duration=first[aout]`;*/
 
   //Ativa a barra de progresso novamente após gerar o loop
@@ -561,14 +703,16 @@ const filterComplex =
 //console.log({overlayX, overlayY, overlayWidth, overlayHeight, exportX, exportY, scale});
 
   //FFMPEG - COMANDOS PARA PROCESSAR OS ARQUIVOS:
-  try{
-    await ffmpeg.exec([
-        "-stream_loop", "999",      //Faz o video repetir infinitamente
-        "-i", sourceVideo,         //Identifica o arquivo de video principal
-        "-i", "overlay.mp4",       //Identifica o arquivo de video overlay
-        "-i", "audio.mp3",         //Identifica o arquivo de audio
-        "-i", "text.png",          //Identifica o arquivo de PNG do texto
-        "-filter_complex", filterComplex, //Sobrepoe o video principal + overlay
+  try{    
+    ffmpegInputs = [];
+    ffmpegInputs.push("-stream_loop", "999"); // Faz o vídeo repetir infinitamente
+    ffmpegInputs.push("-i", sourceVideo); // Vídeo principal
+    if(enableOverlay.checked){
+        ffmpegInputs.push("-i", "overlay.mp4"); // Overlay
+    }
+    ffmpegInputs.push("-i", "audio.mp3"); // MP3
+    ffmpegInputs.push("-i", "text.png"); // Texto PNG
+    ffmpegInputs.push("-filter_complex", filterComplex); //Sobrepoe o video principal + overlay
                                    //1 = overlay | 0 = video principal
                                    //Primeiro está retirando o chroma key, redimencionando o overlay, depois posiciona no centro
                                    //chromakey=COR:SIMILARIDADE:SUAVIZAÇÃO 
@@ -577,15 +721,15 @@ const filterComplex =
                                      //SUAVIZAÇÃO => Suavização da borda, evita efeito serrilhado
                                    //scale=iw*2:ih*2 -->   
                                    //W = largura video principal / w = largura overlay / H = altura video principal / h = altura overlay
-        "-map", "[v]",             //Usa video filtrado
-        "-map", "[aout]",          //Unir audio do MP3 com o audio do video do overlay        
-        "-c:v", "libx264",         //Mantem o arquivo original - libx264: Permite editar o video
-        "-preset", "ultrafast",     //Compressão do arquivo: ultrafast, superfast, veryfast, faster, fast, medium (padrão)...
-        "-crf", "23",              //Qualidade do video
-        "-c:a", "aac",             //Converte audio em AAC
-        "-t", audioDuration.toString(),  //Termina exatamente ao tamanho do MP3
-        "saida.mp4"                //Arquivo gerado
-    ]);
+    ffmpegInputs.push( "-map", "[v]"); //Vídeo final
+    ffmpegInputs.push("-map", "[aout]"); //Unir audio do MP3 com o audio do video do overlay 
+    ffmpegInputs.push("-c:v", "libx264"); //Codec de vídeo - Mantem o arquivo original - libx264: Permite editar o video
+    ffmpegInputs.push("-preset","ultrafast"); //Compressão do arquivo: ultrafast, superfast, veryfast, faster, fast, medium (padrão)...
+    ffmpegInputs.push("-crf","23"); //Qualidade do video
+    ffmpegInputs.push("-c:a", "aac"); //Codec de áudio - Converte audio em AAC
+    ffmpegInputs.push("-t", audioDuration.toString()); //Termina exatamente ao tamanho do MP3
+    ffmpegInputs.push("saida.mp4");  //Arquivo final gerado
+    await ffmpeg.exec(ffmpegInputs);
     /*
     COMPRESSÃO:
     Preset	   Velocidade	          Qualidade por tamanho
@@ -718,7 +862,7 @@ function drawPreview(){
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
   //DESENHAR OVERLAY COM CHROMAKEY NO CANVAS
-  if(overlayVideo.readyState >= 2){
+  if(enableOverlay.checked && overlayVideo.readyState >= 2){ //Se checkbox do overlay estiver marcada e overlay carregado
     overlayPercentX = overlayX / canvas.width; //Posição relativa horizontal sempre atualizada
     overlayPercentY = overlayY / canvas.height; //Posição relativa vertical sempre atualizada
     if( //Faz o canva interno ser exatamente o mesmo tamanho do overlay
@@ -771,8 +915,13 @@ btCancelar.addEventListener("click", async () => {
     await ffmpeg.terminate(); //Interrompe o FFmpeg
     ffmpegLoaded = false;
     exporting = false;
+    //Retorna o vídeo principal
     video.play(); //Quando cancelar exportação pode iniciar o preview do video principal novamente
-    overlayVideo.play(); //Quando cancelar exportação pode iniciar o preview do overlay novamente
+    if(enableOverlay.checked){ //Só inicia o overlay caso esteja habilitado
+        overlayVideo.play(); //Quando cancelar exportação pode iniciar o preview do overlay novamente
+    }
+    /*video.play(); //Quando cancelar exportação pode iniciar o preview do video principal novamente
+    overlayVideo.play(); //Quando cancelar exportação pode iniciar o preview do overlay novamente*/
     progressFill.style.width = "0%";
     progressText.textContent = "Cancelado";
     alert("Download cancelado.");
