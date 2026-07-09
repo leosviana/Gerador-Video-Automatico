@@ -5,8 +5,8 @@
     <link rel="icon" type="image/svg+xml" href="/Gerador-Video-Automatico/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>gerador-video-automatico</title>
-    <script type="module" crossorigin src="/Gerador-Video-Automatico/assets/index-BH6zPsQd.js"></script>
-    <link rel="stylesheet" crossorigin href="/Gerador-Video-Automatico/assets/index-DX_ozwe5.css">
+    <script type="module" crossorigin src="/Gerador-Video-Automatico/assets/index-CrjsBd-L.js"></script>
+    <link rel="stylesheet" crossorigin href="/Gerador-Video-Automatico/assets/index-CSXOOEY8.css">
   </head>
   <body>
     <div class="container">
@@ -24,12 +24,21 @@
                 <div class="column-2-1">
                     <div class="column-2-2-1">
                         <h3>CONTROLE DE VÍDEO</h3>
+                        <label>Repetição:</label>
+                        <select id="loopMode">
+                            <option value="loop" selected>Loop</option>
+                            <option value="reverse">Reverso</option>
+                        </select>
                         <label>Velocidade: </label>
                         <input type="range" id="videoSpeed" min="-75" max="200" step="5" value="0">
                         <span id="videoSpeedLabel">1.0x</span>
                     </div>
                     <div class="column-2-2-2">
-                        <h3>BOTÃO INSCREVA-SE</h3>
+                        <div class="column-2-2-2-1">
+                            <h3>INSCREVA-SE</h3>
+                            <!-- Checkbox para ativar/desativar o overlay -->
+                            <input type="checkbox" id="enableOverlay" checked>
+                        </div>
                         <label>Linguagem:</label>
                         <select id="overlayLanguage">
                             <option value="pt" selected>Português</option>
@@ -43,11 +52,6 @@
                         <!-- max = 4 é o maior valor permitido (4 vezes o tamanho original) -->
                         <!-- step = 0.1 define de quanto em quanto o valor pode variar (0.1 significa: 0.5, 0.6, 0.7...) -->
                         <!-- value = 0.25 é o valor inicial quando abre a página -->
-                        <label>Repetição:</label>
-                        <select id="loopMode">
-                            <option value="loop" selected>Loop</option>
-                            <option value="reverse">Reverso</option>
-                        </select>
                     </div>
                 </div>
                 <div class="column-2-2">
