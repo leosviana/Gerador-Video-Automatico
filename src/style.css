@@ -54,18 +54,17 @@ h1{
     margin: 10px;
 }
 
-.column-2-2-2{
+/*ALINHAR TÍTULO OVERLAY + CHECKBOX*/
+.column-2-2-2-1{
     display: flex;
-    justify-content: space-bottom;
+    justify-content: space-between;
     align-items: center;
 }
 
-.overlay-enable{
-    display: flex;
-    align-items: center;
-    gap: 50px;
-    font-size: 14px;
+#enableOverlay{
     cursor: pointer;
+    width: 18px;
+    height: 18px;
 }
 
 .preview-wrapper{

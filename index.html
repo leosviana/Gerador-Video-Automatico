@@ -22,17 +22,21 @@
                 <div class="column-2-1">
                     <div class="column-2-2-1">
                         <h3>CONTROLE DE VÍDEO</h3>
+                        <label>Repetição:</label>
+                        <select id="loopMode">
+                            <option value="loop" selected>Loop</option>
+                            <option value="reverse">Reverso</option>
+                        </select>
                         <label>Velocidade: </label>
                         <input type="range" id="videoSpeed" min="-75" max="200" step="5" value="0">
                         <span id="videoSpeedLabel">1.0x</span>
                     </div>
                     <div class="column-2-2-2">
-                        <h3>BOTÃO INSCREVA-SE</h3>
-                        <!-- Checkbox para ativar/desativar o overlay -->
-                         <label class="overlay-enable">
+                        <div class="column-2-2-2-1">
+                            <h3>INSCREVA-SE</h3>
+                            <!-- Checkbox para ativar/desativar o overlay -->
                             <input type="checkbox" id="enableOverlay" checked>
-                            Ativar
-                         </label>
+                        </div>
                         <label>Linguagem:</label>
                         <select id="overlayLanguage">
                             <option value="pt" selected>Português</option>
@@ -46,11 +50,6 @@
                         <!-- max = 4 é o maior valor permitido (4 vezes o tamanho original) -->
                         <!-- step = 0.1 define de quanto em quanto o valor pode variar (0.1 significa: 0.5, 0.6, 0.7...) -->
                         <!-- value = 0.25 é o valor inicial quando abre a página -->
-                        <label>Repetição:</label>
-                        <select id="loopMode">
-                            <option value="loop" selected>Loop</option>
-                            <option value="reverse">Reverso</option>
-                        </select>
                     </div>
                 </div>
                 <div class="column-2-2">

@@ -14,6 +14,15 @@ const previewContainer = document.querySelector(".preview-container");
 const canvas = document.getElementById("previewCanvas"); //Canvas onde sera exibido o preview
 const ctx = canvas.getContext("2d"); // Contexto 2D do canvas para desenhar imagens e videos
 const loopMode = document.getElementById("loopMode"); //Seleciona o modo de repeticao
+loopMode.addEventListener("change", () => { //Controle de velocidade para os modos de repetição
+    reverseDirection = 1;
+    if(loopMode.value === "reverse"){
+        video.pause();
+    }else{
+        video.playbackRate = playbackSpeed;
+        video.play().catch(() => {});
+    }
+});
 let dragging = false; //Controle de arrastar o mouse
 let dragOffsetX = 0; //Posição X (vertical)
 let dragOffsetY = 0; //Posição Y (horizontal)
@@ -52,7 +61,9 @@ videoSpeed.addEventListener("input", () => {
     }
     videoSpeedLabel.textContent =
         playbackSpeed.toFixed(2) + "x";
-    video.playbackRate = playbackSpeed;
+    if(loopMode.value !== "reverse"){
+      video.playbackRate = playbackSpeed;
+    }
 });
 //BOTOES (EXPORTAR / CANCELAR)
 const outputResolution = document.getElementById("outputResolution");
@@ -153,6 +164,8 @@ videoInput.addEventListener("change", (event) => {
       video.videoWidth,
       video.videoHeight
     );
+    // Reaplica a velocidade atual do preview
+    video.playbackRate = playbackSpeed;
   };
     video.play();
 });
@@ -617,7 +630,7 @@ async function exportVideo(){
     await ffmpeg.exec([ //Exportação do vídeo temporário para fazer reverso
       "-i", "video.mp4",
       "-filter_complex",
-      "[0:v]reverse[rev];[0:v][rev]concat=n=2:v=1:a=0[v]",
+      `[0:v]reverse[rev];[0:v][rev]concat=n=2:v=1:a=0[ping];[ping]setpts=${1/speed}*PTS[v]`,
       "-map", "[v]",
       "-an",      
       "-c:v", "libx264",
@@ -635,7 +648,7 @@ async function exportVideo(){
   if(outputResolution.value !== "original"){
     videoChain += `,scale=${outputResolution.value}`;
   }*/
- 
+
   //Resolução saída
   let videoChain = ""; // Inicializa vazio
   if(enableOverlay.checked){ // Só cria o filtro caso exista overlay
@@ -846,7 +859,8 @@ function drawPreview(){
   if(video.readyState < 2) return;
   if(loopMode.value === "reverse"){
     video.pause();
-    video.currentTime += (1 / 30) * reverseDirection;
+    const frameStep = playbackSpeed / 30;
+    video.currentTime += frameStep * reverseDirection;
     if(video.currentTime >= video.duration){
       reverseDirection = -1;
     }
@@ -855,7 +869,8 @@ function drawPreview(){
     }
   }else{
     if(video.paused){
-      video.play();
+      video.playbackRate = playbackSpeed;
+      video.play().catch(() => {});
     }
   }
   ctx.clearRect(0, 0, canvas.width, canvas.height);
