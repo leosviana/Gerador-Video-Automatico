@@ -88,6 +88,29 @@ h1{
     gap: 15px;
 }
 
+/* Botão salvar dos controles */
+/*.bt-salvar{
+    display: block;
+    margin: 20px auto 0;
+    padding: 6px 18px;
+    font-size: 14px;
+    cursor: pointer; 
+}*/
+
+.btControlArea{
+    grid-column: 1 / span 2;
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    gap: 10px;
+}
+
+.btSalveControl, .btResetControl{
+    width:90px;
+    height:32px;
+    cursor:pointer;
+}
+
 #previewCanvas{
     width:100%;
     max-width:900px;

@@ -82,7 +82,112 @@ function updateButtons(){
   btCancelar.disabled = !exporting; //Cancelar só habilita durante a exportação
 }
 updateButtons(); //Executa a função de exibir os botões
-
+// =======================================
+// BOTÕES DE CONTROLE
+// =======================================
+// SALVAR CONFIGURAÇÕES DE CONTROLE
+const btSalveControl = document.getElementById("btSalveControl");
+function salvarConfiguracoes(){
+    const config = {
+        loopMode: loopMode.value,
+        videoSpeed: videoSpeed.value,
+        enableOverlay: enableOverlay.checked,
+        overlayLanguage: overlayLanguage.value,
+        overlayScale: overlayInput.value,
+        outputResolution: outputResolution.value,
+        customText: customText.value,
+        fontFamily: fontFamily.value,
+        fontSize: fontSize.value,
+        textColor: textColor.value,
+        strokeWidth: strokeWidth.value,
+        strokeColor: strokeColor.value,
+        overlayX,
+        overlayY,
+        textX,
+        textY
+    };
+    localStorage.setItem(
+        "videoEditorConfig",
+        JSON.stringify(config)
+    );
+    alert("Configurações salvas!");
+}
+// CARREGAR CONFIGURAÇÕES DE CONTROLE
+function carregarConfiguracoes(){
+    const config = JSON.parse(
+        localStorage.getItem("videoEditorConfig")
+    );
+    if(!config) return;
+    loopMode.value = config.loopMode;
+    videoSpeed.value = config.videoSpeed;
+    enableOverlay.checked = config.enableOverlay;
+    overlayLanguage.value = config.overlayLanguage;
+    overlayInput.value = config.overlayScale;
+    outputResolution.value = config.outputResolution;
+    customText.value = config.customText;
+    fontFamily.value = config.fontFamily;
+    fontSize.value = config.fontSize;
+    textColor.value = config.textColor;
+    strokeWidth.value = config.strokeWidth;
+    strokeColor.value = config.strokeColor;
+    overlayScale = parseFloat(config.overlayScale);
+    overlayX = config.overlayX;
+    overlayY = config.overlayY;
+    textX = config.textX;
+    textY = config.textY;
+    videoSpeed.dispatchEvent(new Event("input"));
+    updateOverlayControls();
+}
+btSalveControl.addEventListener("click", salvarConfiguracoes);
+// RESETAR CONFIGURAÇÕES DE CONTROLE
+const btResetControl = document.getElementById("btResetControl");
+function resetarConfiguracoes(){
+    localStorage.removeItem("videoEditorConfig");
+    //---------------------------------
+    // CONTROLE DO VÍDEO
+    //---------------------------------
+    loopMode.value = "loop";
+    videoSpeed.value = 0;
+    playbackSpeed = 1;
+    videoSpeedLabel.textContent = "1.00x";
+    video.playbackRate = 1;
+    //---------------------------------
+    // OVERLAY
+    //---------------------------------
+    enableOverlay.checked = true;
+    overlayLanguage.value = "pt";
+    overlayInput.value = 1;
+    overlayScale = 1;
+    overlayX = 400;
+    overlayY = 150;
+    //---------------------------------
+    // TEXTO
+    //---------------------------------
+    customText.value = "";
+    fontFamily.selectedIndex = 0;
+    fontSize.value = 40;
+    textColor.value = "#ffffff";
+    strokeWidth.value = 2;
+    strokeColor.value = "#000000";
+    textX = 100;
+    textY = 100;
+    //---------------------------------
+    // EXPORTAÇÃO
+    //---------------------------------
+    outputResolution.value = "original";
+    //---------------------------------
+    // Atualiza interface
+    //---------------------------------
+    videoSpeed.dispatchEvent(
+        new Event("input")
+    );
+    overlayInput.dispatchEvent(
+        new Event("input")
+    );
+    updateOverlayControls();
+    alert("Controles resetados.");
+}
+btResetControl.addEventListener("click", resetarConfiguracoes);
 // =======================================
 // AUDIO PRINCIPAL
 // =======================================
@@ -948,6 +1053,7 @@ btCancelar.addEventListener("click", async () => {
 
 async function init(){
   console.log("Projeto carregado com sucesso");
+  carregarConfiguracoes();
   drawPreview();
 }
 init();
